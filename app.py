@@ -12,7 +12,7 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('secret_key')
+app.secret_key = os.environ.get('SECRET_KEY')
 
 app.config['SESSION_PERMANENT'] = False  # Prevent session expiration issues
 #app.config['SESSION_TYPE'] = 'filesystem'  # Store sessions on the server
