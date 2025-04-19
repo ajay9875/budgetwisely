@@ -152,7 +152,7 @@ def dashboard():
     }
     
     response = make_response(
-               render_template("index.html", 
+               render_template("Index.html", 
                username=user.name,
                budget_result=budget_result, 
                remaining_time=remaining_seconds)
