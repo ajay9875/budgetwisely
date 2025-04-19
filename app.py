@@ -132,7 +132,7 @@ def dashboard():
               else budget_query.order_by(UserBudget.id.desc()).first())
 
     if not budget:
-        return render_template("index.html", username=user.name, remaining_time=remaining_seconds, budget_result={})
+        return render_template("Index.html", username=user.name, remaining_time=remaining_seconds, budget_result={})
 
     expenses = Expense.query.filter_by(budget_id=budget.id).all()
     total_expenses = sum(float(exp.expense_amount) for exp in expenses)
