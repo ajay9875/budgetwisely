@@ -1,0 +1,337 @@
+:root {
+    --primary-color: #0508a8;
+    --primary-hover: #063f96;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --text-dark: #333333;
+    --text-light: #f8f9fa;
+    --bg-light: #ffffff;
+    --bg-dark: #1a1a1a;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --border-radius: 8px;
+    --transition: all 0.3s ease;
+}
+
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #e0e1e2;
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* Typography */
+h1, h2, h3, h4 {
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+/* Header */
+header {
+    background-color: var(--bg-dark);
+    color: white;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    align-items: center;
+    top: 0;
+    z-index: 100;
+    display: flex;
+}
+
+header a{
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.85);
+    margin-right: 2rem;
+    margin-left: 15px;
+    font-weight: 500;
+    transition: var(--transition);
+    padding: 0.5rem 0;
+    position: relative;
+}
+
+header a:hover {
+    color: white;
+}
+
+header a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: white;
+    transition: var(--transition);
+}
+
+header a:hover::after {
+    width: 100%;
+}
+
+#username {
+    color: rgba(255, 255, 255, 0.9);
+    margin-right: 20px;
+    margin-left: auto;
+}
+header button{
+    height:50px;
+    width:50px;
+    border-radius: 100%;
+    border: groove 2px white;
+}
+.profile{
+    margin-right: 20px;
+    cursor: pointer;
+}
+
+#profile-details {
+    display: none;
+    position: fixed;
+    top: 110px;
+    right: 0;
+    background-color: rgb(241, 239, 239);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    min-width: 160px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+  }
+  
+  /* Links inside dropdown */
+  #profile-details a {
+    display: block;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: #333;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+  
+  #profile-details a:hover {
+    background-color: #f0f0f0;
+  }
+
+/* Layout */
+.all {
+    display: flex;
+    gap: 2rem;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.left {
+    width: 30%;
+}
+
+.right {
+    width: 70%;
+}
+
+/* Cards & Containers */
+.calculator, .results {
+    background-color: var(--bg-light);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 2rem;
+    transition: var(--transition);
+    height: 100%;
+}
+
+.calculator:hover, .results:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+input{
+    width: 90%;
+}
+select{
+    width: 100%;
+}
+
+/* Form Elements */
+input, select {
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(5, 8, 168, 0.1);
+}
+
+button {
+    padding: 0.75rem 1.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1rem;
+    margin-top: 1rem;
+    width: 100%;
+}
+
+button:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+/* Results & Data Visualization */
+.results {
+    background-color: rgb(240, 240, 240);
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.summary-card {
+    background: var(--bg-light);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.summary-card h3 {
+    margin: 0 0 1rem 0;
+    color: #64748b;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.summary-card p {
+    font-size: 1.75rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.positive {
+    color: var(--success-color);
+}
+
+.negative {
+    color: var(--danger-color);
+}
+
+.chart-container {
+    width: 70%;
+    background: var(--bg-light);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    margin: 2rem 0;
+}
+
+.value-display.negative::before {
+    content: "-";
+}
+
+.chart-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.summary-cards {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+}
+.summary-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    width: 30%;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.summary-card h3 {
+    margin-top: 0;
+    color: #333;
+}
+.summary-card p {
+    font-size: 1.5em;
+    margin-bottom: 0;
+}
+.positive {
+    color: #28a745;
+}
+.negative {
+    color: #dc3545;
+}
+.percentage {
+    font-size: 14px;
+    color: #6c757d;
+    margin-left: 5px;
+}
+.expense-details {
+    margin-top: 20px;
+}
+.expense-details li {
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+.delete_month button{
+   background-color: red;
+}
+footer {
+    text-align: center;
+    padding: 5px;
+    color: rgb(168, 166, 166);
+    font-size: 12px;
+    margin: 30px 0px 10px 0px;
+}
+.expense-details{
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .all {
+        flex-direction: column;
+        padding: 1rem;
+    }
+    
+    .left, .right {
+        width: 100%;
+    }
+    
+    header a {
+        margin-right: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    #username {
+        display: none;
+    }
+}

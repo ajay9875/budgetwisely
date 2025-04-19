@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Wisely: Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+
+</head>
+<body>
+        <!-- Flash Messages -->
+        <div class="message">    
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            </div>
+    <div class="all">
+    <div class="auth-container">
+
+        <h2>User Login</h2>
+        <form method="POST" action="{{ url_for('login') }}">
+                <input type="email" name="email" placeholder="Username or Email" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+            <p><a href="{{ url_for('forgot_password') }}">Forgot Password?</a></p>
+            <p>New here? <a href="{{ url_for('signup') }}">Register</a></p>
+            
+            <a href="{{ url_for('default') }}">Back to Home</a>
+              </div>
+        </div>
+</body>
+</html>

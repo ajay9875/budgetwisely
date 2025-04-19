@@ -1,0 +1,24 @@
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 15px;
+}
+
+.flash-message {
+    width:fit-content;
+    justify-self: center;
+    padding: 10px 100px 10px 100px;
+    margin: 10px 0 10px 0;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.success {
+    background-color: #28a745;
+    color: white;
+}
+
+.error {
+    background-color: #dc3545;
+    color: white;
+}

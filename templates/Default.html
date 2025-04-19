@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Wisely: Take Control of Your Finances</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Default.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Home.css') }}">
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
+</head>
+<body>
+    <header>
+        <a href="#top">Home</a>
+        <a href="{{ url_for('about_us') }}">About Us</a>
+        <a href="#">Services</a>
+        <a href="{{ url_for('contact_us') }}">Contact Us</a>
+        <a href="{{ url_for('signup') }}">New user?</a>
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+        <p id="logo"> <img src="{{ url_for('static', filename='icon/favicon.png') }}"></p>
+    </header>
+        <!-- Flash Messages -->
+        <div class="message">    
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            </div>  
+
+            <div class="welcome">
+                <h1>Welcome to Budget Wisely</h1>
+              </div>      
+    
+    <div class="container">
+        <section class="chart-section">
+            <div class="chart-container">
+                <h3>Monthly Budget Overview</h3>
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Yearly Financial Summary</h3>
+                <canvas id="barChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Expense Distribution</h3>
+                <canvas id="doughnutChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <section class="cta-section">
+        <p>Track your budget using different type of visulization technique such as pie, bar and doughnut chart to get insight from your expenses and savings.
+           Calculate budget daily, monthly or even yearly budget based on your expenses amount and their category.
+        Join thousands of users who have improved their financial health. Sign up today and start making smarter financial decisions!</p>
+        <a href="{{ url_for('signup') }}" class="cta-button">Get Started for Free</a>
+    </section>
+
+    <div class="container">
+        <section class="features-section">  
+            <div class="feature-card">
+                <h2>Effortless Budgeting</h2>
+                <p>
+                    Create and manage your budget with ease.  BudgetWisely's intuitive interface helps you set up your monthly budget in minutes.
+                </p>
+                <ul>
+                    <li>Set income and expense categories</li>
+                    <li>Track spending against your budget</li>
+                    <li>Visualize your budget with charts</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h2>Smart Expense Tracking</h2>
+                <p>
+                   Automatically track your expenses from various sources, categorize them, and gain insights into your spending habits.
+                </p>
+                <ul>
+                    <li>Connect to bank accounts and credit cards</li>
+                    <li>Categorize transactions automatically</li>
+                    <li>Manually add cash expenses</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h2>Insightful Reporting</h2>
+                <p>
+                    Get a clear picture of your financial health with detailed reports and visualizations.  Understand where your money is going and identify opportunities to save.
+                </p>
+                <ul>
+                    <li>Income and Expense reports</li>
+                    <li>Net worth calculation</li>
+                    <li>Customizable report ranges</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+        <footer>
+            <p>&copy; 2025 BudgetWisely. All rights reserved.</p>
+        </footer>
+        <script>
+            const ctx1 = document.getElementById('pieChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'pie',
+                data: { labels: ['Income', 'Expenses', 'Savings'], datasets: [{ data: [5000, 3000, 2000], backgroundColor: ['#28a745', '#dc3545', '#ffc107'] }] }
+            });
+    
+            const ctx2 = document.getElementById('barChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'bar',
+                data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], datasets: [{ label: 'Income', data: [5000, 5200, 4900, 5300, 5100], backgroundColor: '#007bff' }, { label: 'Expenses', data: [3000, 3100, 2900, 3300, 3200], backgroundColor: '#dc3545' }] }
+            });
+    
+            const ctx3 = document.getElementById('doughnutChart').getContext('2d');
+            new Chart(ctx3, {
+                type: 'doughnut',
+                data: { labels: ['Rent', 'Food', 'Transport', 'Entertainment', 'Others'], datasets: [{ data: [1200, 800, 500, 400, 100], backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff'] }] }
+            });
+        </script>
+</body>
+</html>

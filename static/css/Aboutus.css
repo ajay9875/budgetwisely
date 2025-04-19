@@ -1,0 +1,117 @@
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f4f8; /* Light background */
+    color: #333;
+    line-height: 1.7;
+}
+.container {
+    margin: 10px;
+}
+/* Header */
+header {
+    background-color: black;
+    color: white;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    padding: 2px 0px 2px 0px;
+    top: 0;
+    z-index: 100;
+    display: flex;
+}
+header img{
+        height:60px;
+        width:60px;
+        border-radius: 100%;
+        margin: 10px 0px 0px 10px;
+}
+header h2{
+   margin:auto;
+}
+.section {
+    margin-bottom: 60px;
+}
+.section h2 {
+    color: #003366; /* Dark Blue */
+    font-size: 2em;
+    margin-bottom: 30px;
+    text-align: center;
+    font-weight: 600;
+    border-bottom: 2px solid #007bff; /* Blue border */
+    padding-bottom: 10px;
+}
+.section p {
+    font-size: 1.1em;
+    color: #444;
+}
+.team-members {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 40px;
+}
+.team-member {
+    flex: 0 0 300px;
+    margin: 20px;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.team-member:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+.team-member h3 {
+    color: #007bff; /* Blue */
+    font-size: 1.5em;
+    margin-bottom: 10px;
+}
+.team-member p {
+    font-size: 1em;
+    color: #555;
+}
+.values-list {
+    list-style: none;
+    padding: 0;
+    margin-left: 20px;
+}
+.values-list li {
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    color: #444;
+    padding-left: 26px; /* Space for the icon */
+    position: relative;
+}
+.values-list li::before {
+    content: '✓'; /* Checkmark icon */
+    position: absolute;
+    left: 0;
+    color: #28a745; /* Green */
+    font-weight: bold;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    background-color: #003366;
+    color: #fff;
+    margin-top: 60px;
+    border-top: 4px solid #007bff;
+}
+@media (max-width: 768px) {
+    .container {
+        padding: 40px 15px;
+    }
+    header h1{
+        font-size: 2em;
+    }
+    .section h2 {
+        font-size: 1.75em;
+    }
+    .team-member {
+        flex: 1 1 100%;
+    }
+}

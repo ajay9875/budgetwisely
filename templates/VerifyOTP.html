@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Wisely: Verify OTP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    <script src="{{url_for('static', filename='javascript/allmessage.js')}}"></script>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+
+</head>
+<body>
+        <!-- Flash Messages -->
+        <div class="message">    
+          {% with messages = get_flashed_messages(with_categories=True) %}
+              {% if messages %}
+                  <div class="flash-messages">
+                      {% for category, message in messages %}
+                          <div class="flash-message {{ category }}">{{ message }}</div>
+                      {% endfor %}
+                  </div>
+              {% endif %}
+          {% endwith %}
+          </div>
+  <div class="all">
+    <div class="auth-container">
+        <h2>Verify OTP</h2>
+        <form method="POST">
+            <input type="hidden" name="email" value="{{ email }}">
+            <input type="text" name="otp" placeholder="Enter OTP" required>
+            <button type="submit">Verify OTP</button>
+        </form>
+        <p><a href="{{ url_for('resend_otp') }}">Resend OTP</a></p>
+        <a href="{{ url_for('default') }}" font-size="12px">Back to home</a>
+
+    </div>
+  </div>
+</body>
+</html>

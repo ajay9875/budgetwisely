@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Wisely: Reset Password</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js')}}"></script>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+
+</head>
+<body>
+
+          <!-- Flash Messages -->
+          <div class="message">    
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            </div>
+    <div class="all">
+       <div class="auth-container">
+       <h2>Reset Password</h2>
+        <form method="POST">
+            <input type="Password" name="password" placeholder="Create password" autocomplete="off" required>
+            <input type="Password" name="cpassword" placeholder="Re-type password" autocomplete="off" required>
+            <button type="submit">Reset Password</button>
+        </form>
+        <p><a href="{{ url_for('default') }}">Back to Home</a></p>
+    </div>
+  </div>
+</body>
+</html>

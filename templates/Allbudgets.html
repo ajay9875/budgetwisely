@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Wisely: All Budgets</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{url_for('static', filename='css/Allbudget.css')}}">
+    <link rel="stylesheet" href="{{url_for('static', filename='css/Allmessage.css')}}">
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+
+</head>
+<body>
+    <!-- Flash Messages -->
+    <div class="message">    
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        </div>
+        <div class="home">
+            <a href="{{ url_for('default') }}"><img src="{{ url_for('static', filename='icon/homeicon.png') }}"></a>
+         </div>
+
+    <div class="container">
+        <h2>Monthly Budget Overview</h2>
+
+        {% if budgets %}
+            <!-- Create a month order dictionary -->
+            {% set month_order = {
+                'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                'September': 9, 'October': 10, 'November': 11, 'December': 12
+            } %}
+            
+            <!-- Sort budgets by month order -->
+            {% set sorted_budgets = [] %}
+            {% for month_num in range(1, 13) %}
+                {% for budget in budgets %}
+                    {% if month_order[budget.month_name] == month_num %}
+                        {% if sorted_budgets.append(budget) %}{% endif %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+
+            <!-- Calculate totals -->
+            {% set total_income = sorted_budgets|sum(attribute='monthly_income') %}
+            {% set total_expenses = sorted_budgets|sum(attribute='total_expenses') %}
+            {% set total_savings = total_income - total_expenses %}
+            {% set expenses_percentage = (total_expenses / total_income * 100) if total_income > 0 else 0 %}
+            {% set savings_percentage = (total_savings / total_income * 100) if total_income > 0 else 0 %}
+
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <h3>Total Income</h3>
+                    <p class="positive">₹{{ "%.2f"|format(total_income) }}</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Expenses</h3>
+                    <p class="{% if total_expenses > total_income %}negative{% else %}positive{% endif %}">
+                        ₹{{ "%.2f"|format(total_expenses) }}
+                        <span class="percentage">({{ "%.1f"|format(expenses_percentage) }}%)</span>
+                    </p>
+                </div>
+                <div class="summary-card">
+                    <h3>Net Savings</h3>
+                    <p class="{% if total_savings < 0 %}negative{% else %}positive{% endif %} value-display">
+                        ₹{{ "%.2f"| format(total_savings|abs) }}
+                        <span class="percentage">({{ "%.1f"|format(savings_percentage) }}%)</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="budgetChart"></canvas>
+            </div>
+
+            {% for budget in sorted_budgets %}
+                <div class="budget-box">
+                    <h3>{{ budget.month_name }}</h3>
+                    
+                    <div class="summary-cards" style="margin: 15px 0;">
+                        <div class="summary-card">
+                            <h3>Income</h3>
+                            <p class="positive value-display">₹{{ "%.2f"|format(budget.monthly_income) }}</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Expenses</h3>
+                            <p class="{% if budget.total_expenses > budget.monthly_income %}negative{% else %}positive{% endif %} value-display">
+                                ₹{{ "%.2f"|format(budget.total_expenses) }}
+                                {% if budget.monthly_income > 0 %}
+                                    <span class="percentage">({{ "%.1f"|format((budget.total_expenses/budget.monthly_income)*100) }}%)</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Savings</h3>
+                            <p class="{% if budget.savings < 0 %}negative{% else %}positive{% endif %} value-display">
+                                ₹{{ "%.2f"|format(budget.savings|abs) }}
+                                {% if budget.monthly_income > 0 %}
+                                    <span class="percentage">({{ "%.1f"|format(budget.savings_percentage) }}%)</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="expenses">
+                            <strong>Expense Breakdown:</strong>
+                        {% if budget.expenses %}
+                            {% for expense in budget.expenses %}
+                                   <p>
+                                    <span class="{% if expense.amount < 0 %}negative{% else %}positive{% endif %} value-display">
+                                        {{ expense.category }}:   ₹{{ "%.2f"|format(expense.amount) }}
+                                    </span>
+
+                                    <span class="percentage">
+                                        {{ "%.1f"|format((expense.amount/budget.monthly_income)*100 if budget.monthly_income > 0 else 0 )}}% of income
+                                        ({{ "%.1f"|format((expense.amount/budget.total_expenses)*100 if budget.total_expenses > 0 else 0 )}}% of expenses)
+                                    </span>
+                                    <span>{{ expense.day_name }} {{ expense.date }}</span>
+                                   </p>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p style="color: #95a5a6; text-align: center;">No expenses recorded for this month.</p>
+                    {% endif %}
+                    
+                    <p class="small-text">Last updated: {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
+                <section class="delete_month">
+                    <form method="POST" action="/delete_month">
+                        <input type="hidden" name="month_name" value="{{ budget.month_name }}">
+                        <button type="submit">Delete</button>
+                    </form>
+                </section>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-data">
+                <p>No budget data found. Please add your first budget.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Budget Wisely(Monthly Budget Calculator). All Rights Reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            {% if budgets %}
+            const ctx = document.getElementById("budgetChart").getContext("2d");
+            
+            // Define month order for sorting
+            const monthOrder = {
+                'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                'September': 9, 'October': 10, 'November': 11, 'December': 12
+            };
+            
+            const budgetData = {{ budgets | tojson }};
+            
+            // Sort data by month order
+            const sortedData = [...budgetData].sort((a, b) => {
+                return monthOrder[a.month_name] - monthOrder[b.month_name];
+            });
+            
+            const months = sortedData.map(budget => budget.month_name);
+            const incomeData = sortedData.map(budget => budget.monthly_income);
+            const expensesData = sortedData.map(budget => budget.total_expenses);
+            const savingsData = sortedData.map(budget => budget.savings);
+
+            new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: "Income",
+                            data: incomeData,
+                            backgroundColor: "rgba(46, 204, 113, 0.7)",
+                            borderColor: "rgba(46, 204, 113, 1)",
+                            borderWidth: 1
+                        },
+                        {
+                            label: "Expenses",
+                            data: expensesData,
+                            backgroundColor: "rgba(231, 76, 60, 0.7)",
+                            borderColor: "rgba(231, 76, 60, 1)",
+                            borderWidth: 1
+                        },
+                        {
+                            label: "Savings",
+                            data: savingsData,
+                            backgroundColor: savingsData.map(value => 
+                                value < 0 ? "rgba(231, 76, 60, 0.7)" : "rgba(52, 152, 219, 0.7)"),
+                            borderColor: savingsData.map(value => 
+                                value < 0 ? "rgba(231, 76, 60, 1)" : "rgba(52, 152, 219, 1)"),
+                            borderWidth: 1,
+                            type: 'bar'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Monthly Budget Comparison (January - December)',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += '₹' + context.raw.toFixed(2);
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                usePointStyle: true,
+                                generateLabels: function(chart) {
+                                    const original = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                    // Change color of Savings label to blue
+                                    original.forEach(label => {
+                                        if (label.text === 'Savings') {
+                                            label.fillStyle = 'rgba(52, 152, 219, 1)';
+                                        }
+                                    });
+                                    return original;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₹' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

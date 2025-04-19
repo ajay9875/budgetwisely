@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Wisely: Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Home.css') }}">
+    <script src="{{ url_for('static', filename='Javascript/Index.js') }}"></script>
+
+</head>
+<body>
+    <header>
+        <a href="#">Home</a>
+        <a href="{{ url_for('about_us') }}">About Us</a>
+        <a href="#">Services</a>
+        <a href="{{ url_for('contact_us') }}">Contact Us</a>
+        <a href="{{ url_for('all_budgets')}}">My Budget</a>
+        <!-- Session Timer -->
+        <div id="session-timer" style="margin: 8px 20px; font-weight: bold;"></div> 
+        {% if username %}
+        <p id="username">Hello, {{ username }}!</p>
+        {% else %}
+        <p id="username">Hello, Guest!</p>
+        {% endif %}
+        <p class="profile" onclick="displaydetails();"> <img src="{{ url_for('static', filename='icon/favicon.png') }}"></p>
+    </header>
+    
+       <div class="profile" id="profile-details">
+        <a href="{{ url_for('all_budgets')}}">My Budget</a>
+        <a href="{{ url_for('change_pass') }}">Change Password</a>
+        <a href="#">Settings</a>
+        <a href="/budgetwisely.com/logout">Logout</a>
+       </div>
+
+    <!-- Flash Messages -->
+    <div class="message">    
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+      {% endwith %}
+    </div>
+    <div class="all">
+        <div class="left">
+            <section class="calculator">
+                <h2>Enter your details</h2>
+                <form method="post" action="{{ url_for('add_month')}}">
+                    <label for='date'>Please Choose a Month</label>
+                    <input type="date" id="date" name="date" required>
+                    <label for="income">Monthly Income:</label>
+                    <input type="number" id="income" name="income" required>
+
+                    <button type="submit">Add Month</button>
+                </form><br>
+
+                <!-- Form to add all expense category and amount -->
+                <form method="POST" action="{{url_for('add_data')}}">
+                    <label for='date'>Choose a date</label>
+                    <input type="date" id="date" name="date" required>
+        
+                    <div id="expense-fields">
+                        <div class="expense-entry">
+                            <label for="expenses">Expense Category:</label>
+                            <input type="text" name="exp_category" required>
+
+                            <label for="expamount">Expense Amount:</label>
+                            <input type="number" name="exp_amount" required>
+                        </div>
+                    </div>
+                    
+                    <button type="submit">Calculate Budget</button>
+                </form>
+            </section>
+        </div>
+        <div class="right">
+            {% if budget_result %}
+            <section class="results">
+                <h2>Budget Overview - {{ budget_result.month_name }}</h2>
+                
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <h3>Income</h3>
+                        <p class="positive">₹{{ "%.2f"|format(budget_result.monthly_income) }}</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Expenses</h3>
+                        <p class="{% if budget_result.total_expenses > budget_result.monthly_income %}negative{% else %}positive{% endif %}">
+                            ₹{{ "%.2f"|format(budget_result.total_expenses) }}
+                            <span class="percentage">
+                                ({{ "%.1f"|format((budget_result.total_expenses/budget_result.monthly_income)*100 if budget_result.monthly_income > 0 else 0) }}%)                      
+                            </span>
+                        </p>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Savings</h3>
+                        <p class="{% if budget_result.savings < 0 %}negative{% else %}positive{% endif %} value-display">
+                            ₹{{ "%.2f"|format(budget_result.savings|abs) }}
+                            <span class="percentage">
+                                ({{ "%.1f"|format((budget_result.savings/budget_result.monthly_income)*100 if budget_result.monthly_income > 0 else 0 )}}%)
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Budget Overview Chart -->
+                <div class="chart-container">
+                    <canvas id="budgetChart"></canvas>
+                </div>
+
+                <!-- Expenses Breakdown Chart Container -->
+                <div class="chart-container">
+                    <h6 style="text-align: center; color: gray; margin-bottom: 15px;">Expense Categories Breakdown</h6>
+                    {% if budget_result.expenses and budget_result.expenses|length > 0 %}
+                        <canvas id="expensesChart"></canvas>
+                    {% else %}
+                        <div class="no-data-message">
+                            <p>No expense data available to display chart, please add your expenses now.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                               
+                <!-- Income Allocation Chart -->
+                <div class="chart-container">
+                    <canvas id="allocationChart"></canvas>
+                </div>
+
+                <!-- Expense Details with Percentages -->
+                <div class="expense-details">
+                    <h3>Expense Details:</h3>
+                    {% if budget_result.expenses %}
+                        {% for expense in budget_result.expenses %}
+                            <li>
+                                <span>{{ expense.category }}: ₹{{ "%.2f"|format(expense.amount) }}</span>
+                                <span class="percentage">
+                                    {{ "%.1f"|format((expense.amount/budget_result.monthly_income)*100 if budget_result.monthly_income > 0 else 0 )}}% of income
+                                    ({{ "%.1f"|format((expense.amount/budget_result.total_expenses)*100 if budget_result.total_expenses > 0 else 0 )}}% of expenses)
+                                </span>
+                                <span>{{ expense.dayname }} {{ expense.date }}</span>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        No expenses detalis to show, please add your expenses now.
+                    {% endif %}
+                </div>
+            <section class="delete_month">
+                <form method="POST" action="/delete_month">
+                    <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
+                    <button type="submit">Delete</button>
+                </form>
+            </section>
+        </section>
+
+            
+            <footer>
+                <p>&copy; 2025 Budget Wisely(Monthly Budget Calculator). All Rights Reserved.</p>
+            </footer>
+
+            <script>
+                // Budget Overview Chart (Income vs Expenses vs Savings)
+                const budgetCtx = document.getElementById('budgetChart').getContext('2d');
+                new Chart(budgetCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Income', 'Expenses', 'Savings'],
+                        datasets: [{
+                            label: 'Amount (₹)',
+                            data: [
+                                {{ budget_result.monthly_income }},
+                                {{ budget_result.total_expenses }},
+                                {{ budget_result.savings }}
+                            ],
+                            backgroundColor: [
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 99, 132, 0.7)',
+                                {% if budget_result.savings >= 0 %}
+                                'rgba(75, 192, 192, 0.7)'
+                                {% else %}
+                                'rgba(255, 99, 132, 0.7)'
+                                {% endif %}
+                            ],
+                            borderColor: [
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 99, 132, 1)',
+                                {% if budget_result.savings >= 0 %}
+                                'rgba(75, 192, 192, 1)'
+                                {% else %}
+                                'rgba(255, 99, 132, 1)'
+                                {% endif %}
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Budget Overview'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ₹';
+                                        }
+                                        label += context.raw.toFixed(2);
+                                        if (context.raw > 0 && context.label !== 'Savings') {
+                                            label += ` (${Math.round((context.raw/{{ budget_result.monthly_income }})*100)}% of income)`;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₹' + value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+    // Expenses Breakdown Chart (Pie)
+    {% if budget_result.expenses and budget_result.expenses|length > 0 %}
+    document.addEventListener("DOMContentLoaded", function() {
+        const expensesCtx = document.getElementById('expensesChart').getContext('2d');
+        const expenseData = {
+            labels: [
+                {% for expense in budget_result.expenses %}
+                    '{{ expense.category }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for expense in budget_result.expenses %}
+                        {{ expense.amount }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                    '#9966FF', '#FF9F40', '#8AC249', '#EA5F89',
+                    '#00BFFF', '#FFD700', '#32CD32', '#FF6347'
+                ],
+                borderWidth: 1,
+                hoverOffset: 10
+            }]
+        };
+
+        new Chart(expensesCtx, {
+            type: 'pie',
+            data: expenseData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+    });
+    {% endif %}
+
+                // Income Allocation Chart (Doughnut)
+                const allocationCtx = document.getElementById('allocationChart').getContext('2d');
+                new Chart(allocationCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Expenses', 'Savings'],
+                        datasets: [{
+                            data: [
+                                {{ budget_result.total_expenses }},
+                                {% if budget_result.savings > 0 %}
+                                {{ budget_result.savings }}
+                                {% else %}
+                                0
+                                {% endif %}
+                            ],
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.7)',
+                                'rgba(75, 192, 192, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(75, 192, 192, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Income Allocation'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const percentage = Math.round((value / {{ budget_result.monthly_income }}) * 100);
+                                        return `${label}: ₹${value.toFixed(2)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            </script>
+            {% endif %}
+        </div>
+    </div>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Safely get remaining time with fallback
+    let remainingTime = parseInt("{{ remaining_time|default(0) }}") || 0;
+    const timerElement = document.getElementById("session-timer");
+    
+    // Don't proceed if element missing
+    if (!timerElement) {
+        console.error("Session timer element not found");
+        return;
+    }
+
+    let timerId; // To store timeout reference
+
+    function updateTimer() {
+        const mins = Math.floor(remainingTime / 60);
+        const secs = remainingTime % 60;
+        
+        // Update display
+        timerElement.innerText = `Session expires in ${mins}m ${secs}s`;
+        timerElement.style.color = remainingTime < 300 ? "red" : "white";
+
+        // Continue or expire
+        if (remainingTime > 0) {
+            remainingTime--;
+            timerId = setTimeout(updateTimer, 1000); // Store timeout ID
+        } else {
+            timerElement.innerText = "Session expired! Logging out...";
+            clearTimeout(timerId); // Cleanup
+            setTimeout(() => window.location.href = "{{ url_for('logout') }}", 2000);
+        }
+    }
+
+    // Start the timer
+    updateTimer();
+
+    // Cleanup on page navigation
+    window.addEventListener('beforeunload', function() {
+        clearTimeout(timerId);
+    });
+   });
+    </script>
+
+</body>
+</html>

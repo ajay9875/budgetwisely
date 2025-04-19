@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Wisely: Signup</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+
+</head>
+<body>
+
+        <!-- Flash Messages -->
+        <div class="message">    
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            </div>
+    <div class="all">
+    <div class="auth-container">
+
+    <div class="login-container">
+        <h2>User Registration</h2>
+        <form method="POST" action="{{ url_for('signup') }}">
+            <input type="text" id="name" name="name" placeholder="Full Name" required>
+
+            <input type="text" id="email" name="email" placeholder="Email Address" required>
+
+            <input type="password" id="password" name="password" placeholder="New Password" required>
+
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm Password" required>
+
+            <button type="submit">Submit</button>
+            <p> Already have an account? <a href="{{ url_for('login')}}">login</a></p>
+            <a href="/">Go back t home</a>
+
+        </form>
+      </div>
+    </div>
+</body>
+</html>
