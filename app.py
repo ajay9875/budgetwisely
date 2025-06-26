@@ -717,8 +717,4 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    app.run(debug=True)
-=======
     app.run(debug=False)
->>>>>>> 570f0c7 (final)
