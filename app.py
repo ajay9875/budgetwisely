@@ -97,11 +97,11 @@ def default():
         return redirect(url_for('landing_page'))
     return redirect(url_for('dashboard'))
 
-@app.route('/budgetwisely/landing_page', methods=['GET'])
+@app.route('/landing_page', methods=['GET'])
 def landing_page():
     return render_template('Default.html')
 
-@app.route("/budgetwisely.com/dashboard", methods=["GET", "POST"])
+@app.route("/dashboard", methods=["GET", "POST"])
 @never_cache
 def dashboard():
     if 'user_id' not in session:
@@ -284,7 +284,7 @@ def add_data():
         flash(f"An error occurred: {str(e)}", 'error')
         return redirect(url_for('dashboard'))
 
-@app.route("/budgetwisely.com/all-budgets", methods=["GET"])
+@app.route("/all-budgets", methods=["GET"])
 @never_cache
 def all_budgets():
     if 'user_id' not in session:
@@ -360,7 +360,7 @@ def all_budgets():
         flash(f"Error retrieving budget data: {str(e)}", "error")
         return render_template("Allbudgets.html", username=username, budgets=[])
 
-@app.route('/budgetwisely.com/signup', methods=['GET', 'POST'])
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
     
     if request.method == 'POST':
@@ -403,7 +403,7 @@ def signup():
 
     return render_template('Signup.html')
 
-@app.route('/budgetwisely.com/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])
 @never_cache
 def login():
     if 'user_id' in session:
@@ -436,7 +436,7 @@ def login():
     return render_template('Login.html')
 
 # Forgot password
-@app.route('/budgetwisely.com/forgot_password', methods=['GET', 'POST'])
+@app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email').strip()  # Ensure no extra spaces
@@ -453,7 +453,7 @@ def forgot_password():
     #session.pop('email', None)
     return render_template('Forgotpass.html')
 
-@app.route('/budgetwisely.com/resend_otp')
+@app.route('/resend_otp')
 def resend_otp():
     email = session.get('email')
 
@@ -498,7 +498,7 @@ def send_otp(email):
     return False
 
 # Verify OTP Route
-@app.route('/budgetwisely.com/verify_otp', methods=['GET', 'POST'])
+@app.route('/verify_otp', methods=['GET', 'POST'])
 @never_cache
 def verify_otp():
     # Prevent direct access if OTP was not sent
@@ -551,7 +551,7 @@ def verify_otp():
     return render_template('VerifyOTP.html')
 
 # Reset Password using OTP
-@app.route('/budgetwisely.com/reset_password', methods=['GET', 'POST'])
+@app.route('/reset_password', methods=['GET', 'POST'])
 @never_cache
 def reset_password():
     email = session.get('verified_email')  # Retrieve email using the correct key
@@ -599,7 +599,7 @@ def reset_password():
     return render_template('Resetpass.html')
 
 #Change password for logged in user
-@app.route('/budgetwisely.com/change_password', methods=['GET', 'POST'])
+@app.route('/change_password', methods=['GET', 'POST'])
 @never_cache
 def change_pass():
     if 'user_id' not in session:
@@ -676,11 +676,11 @@ def delete_month():
             flash(f"We are unable to process right now! Please try again.",'error')
     return None
 
-@app.route('/budgetwisely.com/about_us')
+@app.route('/about_us')
 def about_us():
     return render_template('Aboutus.html')
 
-@app.route('/budgetwisely.com/contact_us', methods=['GET', 'POST'])
+@app.route('/contact_us', methods=['GET', 'POST'])
 def contact_us():
     if request.method == 'POST':
         name = request.form.get('name').strip()
@@ -697,7 +697,7 @@ def contact_us():
 
     return render_template('Contact.html')
 
-@app.route('/budgetwisely.com/logout')
+@app.route('/logout')
 def logout():
     session.clear()  # Clears all session keys at once
     flash("Logged out successfully!", "success")
