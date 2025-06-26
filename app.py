@@ -285,6 +285,7 @@ def add_data():
         return redirect(url_for('dashboard'))
 
 @app.route("/budgetwisely.com/all-budgets", methods=["GET"])
+@never_cache
 def all_budgets():
     if 'user_id' not in session:
         flash('Session expired! Please login again', 'error')
@@ -498,6 +499,7 @@ def send_otp(email):
 
 # Verify OTP Route
 @app.route('/budgetwisely.com/verify_otp', methods=['GET', 'POST'])
+@never_cache
 def verify_otp():
     # Prevent direct access if OTP was not sent
     email = session.get('email')  # Retrieve email from session
@@ -550,6 +552,7 @@ def verify_otp():
 
 # Reset Password using OTP
 @app.route('/budgetwisely.com/reset_password', methods=['GET', 'POST'])
+@never_cache
 def reset_password():
     email = session.get('verified_email')  # Retrieve email using the correct key
     # Prevent unauthorized access
@@ -597,6 +600,7 @@ def reset_password():
 
 #Change password for logged in user
 @app.route('/budgetwisely.com/change_password', methods=['GET', 'POST'])
+@never_cache
 def change_pass():
     if 'user_id' not in session:
         flash("Session expired! Please login again.", 'error')
@@ -713,4 +717,8 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     app.run(debug=True)
+=======
+    app.run(debug=False)
+>>>>>>> 570f0c7 (final)
