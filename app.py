@@ -6,31 +6,109 @@ from email_validator import validate_email, EmailNotValidError
 from datetime import datetime, timedelta
 import random
 import smtplib
-from dotenv import load_dotenv
 import os
-# Load environment variables
+from dotenv import load_dotenv
+
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
 
-app.config['SESSION_PERMANENT'] = False  # Prevent session expiration issues
-#app.config['SESSION_TYPE'] = 'filesystem'  # Store sessions on the server
+# Detect PythonAnywhere environment
+ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
 
-# Configure SQLAlchemy for Aiven PostgreSQL
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+# 1. PythonAnywhere Credentials
+PA_USERNAME = os.getenv('PA_USERNAME', 'BudgetWisely')
+PA_PASSWORD = os.getenv('PA_PASSWORD')
+PA_HOST = os.getenv('PA_HOST', f"{PA_USERNAME}.mysql.pythonanywhere-services.com")
+PA_DB_NAME = os.getenv('PA_DB_NAME', f"{PA_USERNAME}$budget_wisely")
+
+# Construct PA URI only if password exists
+PA_URI = (
+    f"mysql+pymysql://{PA_USERNAME}:{PA_PASSWORD}@{PA_HOST}/{PA_DB_NAME}" 
+    if PA_PASSWORD else None
+)
+
+# 2. Other Online External Database URI (e.g., PostgreSQL / Neon / Render)
+EXTERNAL_ONLINE_DB_URI = os.getenv('DATABASE_URI') 
+
+# 3. Fallback Logic Chain:
+# Try PA URI (if on PA and credentials exist) -> Fallback to DATABASE_URI -> Fallback to SQLite
+if ON_PYTHONANYWHERE and PA_URI:
+    DATABASE_URL = PA_URI
+elif EXTERNAL_ONLINE_DB_URI:
+    DATABASE_URL = EXTERNAL_ONLINE_DB_URI
+else:
+    DATABASE_URL = 'sqlite:///local.db'
+
+# Fix for PostgreSQL URIs starting with 'postgres://' (SQLAlchemy 1.4+ requires 'postgresql://')
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_size': 10,
-    'max_overflow': 20,
-    'pool_recycle': 3600,
-    'pool_pre_ping': True,
-    'pool_timeout': 30
-}
+
+# Adjust engine options dynamically
+if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']:
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 10,
+        'max_overflow': 20,
+        'pool_recycle': 3600,
+        'pool_pre_ping': True,
+        'pool_timeout': 30
+    }
+else:
+    # Standard settings for MySQL / SQLite
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_recycle': 280,  # PythonAnywhere drops idle MySQL connections after 300s
+        'pool_pre_ping': True
+    }
 
 db = SQLAlchemy(app)
 
-# Database Models
+# New Db Schemas to interact with PythonAnywhere MySQL database
+# Models updated for MySQL compatibility
+class User(db.Model):
+    __tablename__ = 'users'
+
+    user_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class UserBudget(db.Model):
+    __tablename__ = 'users_budget'
+    __table_args__ = (
+        db.UniqueConstraint('username', 'month_name', name='unique_user_month'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    username = db.Column(db.String(100), nullable=False)
+    month_name = db.Column(db.String(50), nullable=False)
+    monthly_income = db.Column(db.Numeric(10, 2), nullable=False)
+    total_expenses = db.Column(db.Numeric(10, 2))
+    savings = db.Column(db.Numeric(10, 2))
+
+    expenses = db.relationship('Expense', backref='budget', cascade='all, delete-orphan')
+
+class Expense(db.Model):
+    __tablename__ = 'expenses'
+
+    id = db.Column(db.Integer, primary_key=True)
+    budget_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users_budget.id', ondelete='CASCADE'),
+    )
+    user_id = db.Column(db.Integer, nullable=False)
+    day_name = db.Column(db.String(20), nullable=False)
+    month_name = db.Column(db.String(50), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    expense_category = db.Column(db.String(100), nullable=False)
+    expense_amount = db.Column(db.Numeric(10, 2), nullable=False)
+
+"""# Database Models
 class User(db.Model):
     __tablename__ = 'users'
     __table_args__ = {'schema': 'auth_schema'}
@@ -73,9 +151,10 @@ class Expense(db.Model):
     date = db.Column(db.Date, nullable=False)
     expense_category = db.Column(db.String(100), nullable=False)
     expense_amount = db.Column(db.Numeric(10, 2), nullable=False)
-
+"""
 # Create schemas if they don't exist
 with app.app_context():
+    #db.drop_all()
     db.create_all()
 
 from functools import wraps
@@ -421,7 +500,7 @@ def login():
                 session['username'] = user.name
                 session.permanent = True  # Enable session expiration
 
-                expiry_time = datetime.now() + timedelta(minutes=6)  # Set session expiry time
+                expiry_time = datetime.now() + timedelta(minutes=30)  # Set session expiry time
                 session['session_expiry'] = expiry_time.timestamp()  # Store expiry time as timestamp
                 
                 flash("Login successful!", 'success')
@@ -717,4 +796,4 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)

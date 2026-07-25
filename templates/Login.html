@@ -28,12 +28,12 @@
 
         <h2>User Login</h2>
         <form method="POST" action="{{ url_for('login') }}">
-                <input type="email" name="email" placeholder="Username or Email" required>
+                <input type="email" name="email" placeholder="Email" required>
                 <input type="password" name="password" placeholder="Password" autocomplete="off" required>
                 <button type="submit">Login</button>
             </form>
             <p><a href="{{ url_for('forgot_password') }}">Forgot Password?</a></p>
-            <p>New here? <a href="{{ url_for('signup') }}">Register</a></p>
+            <p><a href="{{ url_for('signup') }}">New here?</a></p>
             
             <a href="{{ url_for('default') }}">Back to Home</a>
               </div>

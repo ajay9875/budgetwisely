@@ -3,126 +3,333 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: Take Control of Your Finances</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>BudgetWisely | Take Control of Your Financial Future</title>
+    
+    <!-- Fonts & Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Flask Static CSS Links -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Default.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Home.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    
     <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
 </head>
 <body>
-    <header>
-        <a href="#top">Home</a>
-        <a href="{{ url_for('about_us') }}">About Us</a>
-        <a href="#">Services</a>
-        <a href="{{ url_for('contact_us') }}">Contact Us</a>
-        <a href="{{ url_for('signup') }}">New user?</a>
-        <a href="{{ url_for('login') }}">Login</a>
-        <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
-        <p id="logo"> <img src="{{ url_for('static', filename='icon/favicon.png') }}"></p>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="#top" class="brand-logo">
+                <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely Logo">
+                <span>Budget<strong>Wisely</strong></span>
+            </a>
+            
+            <!-- Hamburger Toggle Button -->
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
+            <!-- Collapsible Navigation Wrapper -->
+            <div class="nav-wrapper" id="navWrapper">
+                <nav class="nav-links">
+                    <a href="#top" class="active">Home</a>
+                    <a href="#features">Features</a>
+                    <a href="#analytics">Analytics</a>
+                    <a href="{{ url_for('about_us') }}">About Us</a>
+                    <a href="{{ url_for('contact_us') }}">Contact</a>
+                </nav>
+
+                <div class="nav-auth">
+                    <a href="{{ url_for('login') }}" class="nav-btn nav-btn-outline">Log In</a>
+                    <a href="{{ url_for('signup') }}" class="nav-btn nav-btn-primary">Sign Up Free</a>
+                </div>
+            </div>
+        </div>
     </header>
-        <!-- Flash Messages -->
-        <div class="message">    
-            {% with messages = get_flashed_messages(with_categories=True) %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                            <div class="flash-message {{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
-            </div>  
 
-            <div class="welcome">
-                <h1>Welcome to Budget Wisely</h1>
-              </div>      
-    
-    <div class="container">
-        <section class="chart-section">
-            <div class="chart-container">
-                <h3>Monthly Budget Overview</h3>
-                <canvas id="pieChart"></canvas>
-            </div>
-            <div class="chart-container">
-                <h3>Yearly Financial Summary</h3>
-                <canvas id="barChart"></canvas>
-            </div>
-            <div class="chart-container">
-                <h3>Expense Distribution</h3>
-                <canvas id="doughnutChart"></canvas>
-            </div>
-        </section>
-    </div>
+    <!-- Flash Messages -->
+    <div class="message-wrapper">   
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>  
 
-    <section class="cta-section">
-        <p>Track your budget using different type of visulization technique such as pie, bar and doughnut chart to get insight from your expenses and savings.
-           Calculate budget daily, monthly or even yearly budget based on your expenses amount and their category.
-        Join thousands of users who have improved their financial health. Sign up today and start making smarter financial decisions!</p>
-        <a href="{{ url_for('signup') }}" class="cta-button">Get Started for Free</a>
+    <!-- Hero Section -->
+    <section class="hero-section" id="top">
+        <div class="hero-content">
+            <span class="hero-badge"><i class="fa-solid fa-sparkles"></i> Smart Wealth Management</span>
+            <h1>Master Your Money with Effortless Precision</h1>
+            <p>Track spending, create intuitive budgets, and optimize your personal savings with real-time visual analytics—all in one secure platform.</p>
+            <div class="hero-cta">
+                <a href="{{ url_for('signup') }}" class="btn btn-hero-primary"><i class="fa-solid fa-rocket"></i> Get Started Free</a>
+                <a href="#analytics" class="btn btn-hero-secondary"><i class="fa-solid fa-chart-pie"></i> Explore Demo</a>
+            </div>
+        </div>
     </section>
 
-    <div class="container">
-        <section class="features-section">  
-            <div class="feature-card">
-                <h2>Effortless Budgeting</h2>
-                <p>
-                    Create and manage your budget with ease.  BudgetWisely's intuitive interface helps you set up your monthly budget in minutes.
-                </p>
-                <ul>
-                    <li>Set income and expense categories</li>
-                    <li>Track spending against your budget</li>
-                    <li>Visualize your budget with charts</li>
-                </ul>
+    <!-- Stats Bar -->
+    <section class="stats-bar">
+        <div class="stats-container">
+            <div class="stat-item">
+                <h3>$2.5M+</h3>
+                <p>Expenses Tracked</p>
             </div>
-            <div class="feature-card">
-                <h2>Smart Expense Tracking</h2>
-                <p>
-                   Automatically track your expenses from various sources, categorize them, and gain insights into your spending habits.
-                </p>
-                <ul>
-                    <li>Connect to bank accounts and credit cards</li>
-                    <li>Categorize transactions automatically</li>
-                    <li>Manually add cash expenses</li>
-                </ul>
+            <div class="stat-item">
+                <h3>50,000+</h3>
+                <p>Active Users</p>
             </div>
-            <div class="feature-card">
-                <h2>Insightful Reporting</h2>
-                <p>
-                    Get a clear picture of your financial health with detailed reports and visualizations.  Understand where your money is going and identify opportunities to save.
-                </p>
-                <ul>
-                    <li>Income and Expense reports</li>
-                    <li>Net worth calculation</li>
-                    <li>Customizable report ranges</li>
-                </ul>
+            <div class="stat-item">
+                <h3>99.9%</h3>
+                <p>Data Security Uptime</p>
             </div>
-        </section>
-    </div>
+            <div class="stat-item">
+                <h3>4.9/5</h3>
+                <p>User Satisfaction</p>
+            </div>
+        </div>
+    </section>
 
-        <footer>
-            <p>&copy; 2025 BudgetWisely. All rights reserved.</p>
-        </footer>
-        <script>
-            const ctx1 = document.getElementById('pieChart').getContext('2d');
-            new Chart(ctx1, {
-                type: 'pie',
-                data: { labels: ['Income', 'Expenses', 'Savings'], datasets: [{ data: [5000, 3000, 2000], backgroundColor: ['#28a745', '#dc3545', '#ffc107'] }] }
+    <!-- Interactive Charts Showcase -->
+    <section class="analytics-section" id="analytics">
+        <div class="section-header">
+            <h2>Real-Time Financial Intelligence</h2>
+            <p>Gain crystal-clear insights into your income, expenses, and monthly savings trends.</p>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <h3>Monthly Overview</h3>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <i class="fa-solid fa-chart-column"></i>
+                    <h3>Yearly Financial Trend</h3>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <i class="fa-solid fa-circle-notch"></i>
+                    <h3>Expense Breakdown</h3>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works">
+        <div class="section-header">
+            <h2>How BudgetWisely Works</h2>
+            <p>Start your journey to financial freedom in 3 simple steps.</p>
+        </div>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-icon">1</div>
+                <h3>Create Account</h3>
+                <p>Sign up in under a minute and set up your personal budget preferences securely.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-icon">2</div>
+                <h3>Log Expenses</h3>
+                <p>Record your income, daily purchases, and categorize spending with minimal effort.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-icon">3</div>
+                <h3>Analyze & Save</h3>
+                <p>View automated visual charts to spot leakages and maximize monthly savings.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="section-header">
+            <h2>Everything You Need to Succeed</h2>
+            <p>Engineered to bring total clarity and simplicity to your finances.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-wallet"></i></div>
+                <h2>Effortless Budgeting</h2>
+                <p>Set up monthly financial limits, assign limits to categories, and track progress seamlessly.</p>
+                <ul>
+                    <li>Custom income & expense categories</li>
+                    <li>Real-time alert thresholds</li>
+                    <li>Dynamic visual budget indicators</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-magnifying-glass-dollar"></i></div>
+                <h2>Smart Tracking</h2>
+                <p>Keep a tight grip on every dollar. Log daily cash, card, and digital payment transactions hassle-free.</p>
+                <ul>
+                    <li>Automatic category organization</li>
+                    <li>Supports recurring monthly items</li>
+                    <li>Fast entry via mobile or desktop</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <h2>Insightful Reporting</h2>
+                <p>Empower your decisions with comprehensive automated statements and visual graphs.</p>
+                <ul>
+                    <li>Net savings & expense percentage calculations</li>
+                    <li>Historical monthly comparisons</li>
+                    <li>Exportable financial summaries</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-banner">
+        <div class="cta-inner">
+            <h2>Ready to Transform Your Finances?</h2>
+            <p>Join thousands of smart planners who are saving more money every single month.</p>
+            <a href="{{ url_for('signup') }}" class="btn btn-cta">Create Your Free Account</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col brand-col">
+                <div class="footer-logo">
+                    <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely">
+                    <span>BudgetWisely</span>
+                </div>
+                <p>Empower your personal financial journey with intelligent budgeting and real-time expense tracking.</p>
+                <p class="footer-location">
+                    <i class="fa-solid fa-location-dot"></i> Hyderabad, Telangana, India
+                </p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <a href="#top">Home</a>
+                <a href="#features">Features</a>
+                <a href="#analytics">Analytics</a>
+                <a href="{{ url_for('about_us') }}">About Us</a>
+            </div>
+
+            <div class="footer-col">
+                <h4>Account</h4>
+                <a href="{{ url_for('login') }}">Log In</a>
+                <a href="{{ url_for('signup') }}">Sign Up</a>
+                <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+            </div>
+
+            <div class="footer-col">
+                <h4>Support & Legal</h4>
+                <a href="{{ url_for('contact_us') }}">Contact Us</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 BudgetWisely. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Mobile Navigation Toggle Script -->
+    <script>
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navWrapper = document.getElementById('navWrapper');
+        const menuIcon = mobileMenuBtn.querySelector('i');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            navWrapper.classList.toggle('active');
+            if (navWrapper.classList.contains('active')) {
+                menuIcon.classList.remove('fa-bars');
+                menuIcon.classList.add('fa-xmark');
+            } else {
+                menuIcon.classList.remove('fa-xmark');
+                menuIcon.classList.add('fa-bars');
+            }
+        });
+
+        // Close mobile navbar when clicking any link
+        document.querySelectorAll('.nav-wrapper a').forEach(link => {
+            link.addEventListener('click', () => {
+                navWrapper.classList.remove('active');
+                menuIcon.classList.remove('fa-xmark');
+                menuIcon.classList.add('fa-bars');
             });
-    
-            const ctx2 = document.getElementById('barChart').getContext('2d');
-            new Chart(ctx2, {
-                type: 'bar',
-                data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], datasets: [{ label: 'Income', data: [5000, 5200, 4900, 5300, 5100], backgroundColor: '#007bff' }, { label: 'Expenses', data: [3000, 3100, 2900, 3300, 3200], backgroundColor: '#dc3545' }] }
-            });
-    
-            const ctx3 = document.getElementById('doughnutChart').getContext('2d');
-            new Chart(ctx3, {
-                type: 'doughnut',
-                data: { labels: ['Rent', 'Food', 'Transport', 'Entertainment', 'Others'], datasets: [{ data: [1200, 800, 500, 400, 100], backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff'] }] }
-            });
-        </script>
+        });
+    </script>
+
+    <!-- Chart Scripts -->
+    <script>
+        // Pie Chart
+        const ctx1 = document.getElementById('pieChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'pie',
+            data: { 
+                labels: ['Income', 'Expenses', 'Savings'], 
+                datasets: [{ 
+                    data: [5000, 3000, 2000], 
+                    backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }] 
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Bar Chart
+        const ctx2 = document.getElementById('barChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: { 
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], 
+                datasets: [
+                    { label: 'Income', data: [5000, 5200, 4900, 5300, 5100], backgroundColor: '#4F46E5', borderRadius: 4 }, 
+                    { label: 'Expenses', data: [3000, 3100, 2900, 3300, 3200], backgroundColor: '#EF4444', borderRadius: 4 }
+                ] 
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Doughnut Chart
+        const ctx3 = document.getElementById('doughnutChart').getContext('2d');
+        new Chart(ctx3, {
+            type: 'doughnut',
+            data: { 
+                labels: ['Rent', 'Food', 'Transport', 'Entertainment', 'Utilities'], 
+                datasets: [{ 
+                    data: [1200, 800, 500, 400, 100], 
+                    backgroundColor: ['#6366F1', '#3B82F6', '#14B8A6', '#F59E0B', '#8B5CF6'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }] 
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    </script>
 </body>
 </html>
