@@ -1,24 +1,61 @@
-/* Flash Messages */
+/* Flash Messages Overlay Container */
 .flash-messages {
-    margin-bottom: 15px;
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none; /* Allows clicks to pass through empty space around messages */
 }
 
 .flash-message {
-    width:fit-content;
-    justify-self: center;
-    padding: 10px 100px 10px 100px;
-    margin: 10px 0 10px 0;
-    border-radius: 5px;
+    width: max-content;
+    max-width: 90vw; /* Prevents overflow on small screens */
+    padding: 14px 28px;
+    border-radius: 8px;
     text-align: center;
     font-weight: bold;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Floating elevation effect */
+    pointer-events: auto; /* Re-enables clicking/interacting on the alert itself */
+    animation: fadeIn 0.3s ease-in-out;
 }
 
-.success {
-    background-color: #28a745;
-    color: white;
+/* Base flash message container styling */
+.flash-message {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.error {
-    background-color: #dc3545;
-    color: white;
+/* Category Specific Overrides */
+.flash-message.info {
+    background-color: #17a2b8 !important;
+    color: #ffffff !important;
+}
+
+.flash-message.success {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+.flash-message.error {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+/* Optional subtle entry animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }

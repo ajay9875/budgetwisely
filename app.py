@@ -12,103 +12,29 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+
 app.secret_key = os.environ.get('SECRET_KEY')
 
-# Detect PythonAnywhere environment
-ON_PYTHONANYWHERE = 'PYTHONANYWHERE_DOMAIN' in os.environ
+app.config['SESSION_PERMANENT'] = False  # Prevent session expiration issues
 
-# 1. PythonAnywhere Credentials
-PA_USERNAME = os.getenv('PA_USERNAME', 'BudgetWisely')
-PA_PASSWORD = os.getenv('PA_PASSWORD')
-PA_HOST = os.getenv('PA_HOST', f"{PA_USERNAME}.mysql.pythonanywhere-services.com")
-PA_DB_NAME = os.getenv('PA_DB_NAME', f"{PA_USERNAME}$budget_wisely")
+#app.config['SESSION_TYPE'] = 'filesystem'  # Store sessions on the server
 
-# Construct PA URI only if password exists
-PA_URI = (
-    f"mysql+pymysql://{PA_USERNAME}:{PA_PASSWORD}@{PA_HOST}/{PA_DB_NAME}" 
-    if PA_PASSWORD else None
-)
+# Configure SQLAlchemy for Aiven PostgreSQL
 
-# 2. Other Online External Database URI (e.g., PostgreSQL / Neon / Render)
-EXTERNAL_ONLINE_DB_URI = os.getenv('DATABASE_URI') 
-
-# 3. Fallback Logic Chain:
-# Try PA URI (if on PA and credentials exist) -> Fallback to DATABASE_URI -> Fallback to SQLite
-if ON_PYTHONANYWHERE and PA_URI:
-    DATABASE_URL = PA_URI
-elif EXTERNAL_ONLINE_DB_URI:
-    DATABASE_URL = EXTERNAL_ONLINE_DB_URI
-else:
-    DATABASE_URL = 'sqlite:///local.db'
-
-# Fix for PostgreSQL URIs starting with 'postgres://' (SQLAlchemy 1.4+ requires 'postgresql://')
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
-# Adjust engine options dynamically
-if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']:
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 10,
-        'max_overflow': 20,
-        'pool_recycle': 3600,
-        'pool_pre_ping': True,
-        'pool_timeout': 30
-    }
-else:
-    # Standard settings for MySQL / SQLite
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_recycle': 280,  # PythonAnywhere drops idle MySQL connections after 300s
-        'pool_pre_ping': True
-    }
+    'pool_size': 10,
+    'max_overflow': 20,
+    'pool_recycle': 3600,
+    'pool_pre_ping': True,
+    'pool_timeout': 30
+}
 
 db = SQLAlchemy(app)
 
-# New Db Schemas to interact with PythonAnywhere MySQL database
-# Models updated for MySQL compatibility
-class User(db.Model):
-    __tablename__ = 'users'
-
-    user_id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class UserBudget(db.Model):
-    __tablename__ = 'users_budget'
-    __table_args__ = (
-        db.UniqueConstraint('username', 'month_name', name='unique_user_month'),
-    )
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False)
-    username = db.Column(db.String(100), nullable=False)
-    month_name = db.Column(db.String(50), nullable=False)
-    monthly_income = db.Column(db.Numeric(10, 2), nullable=False)
-    total_expenses = db.Column(db.Numeric(10, 2))
-    savings = db.Column(db.Numeric(10, 2))
-
-    expenses = db.relationship('Expense', backref='budget', cascade='all, delete-orphan')
-
-class Expense(db.Model):
-    __tablename__ = 'expenses'
-
-    id = db.Column(db.Integer, primary_key=True)
-    budget_id = db.Column(
-        db.Integer,
-        db.ForeignKey('users_budget.id', ondelete='CASCADE'),
-    )
-    user_id = db.Column(db.Integer, nullable=False)
-    day_name = db.Column(db.String(20), nullable=False)
-    month_name = db.Column(db.String(50), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    expense_category = db.Column(db.String(100), nullable=False)
-    expense_amount = db.Column(db.Numeric(10, 2), nullable=False)
-
-"""# Database Models
+# Database Models
 class User(db.Model):
     __tablename__ = 'users'
     __table_args__ = {'schema': 'auth_schema'}
@@ -151,10 +77,9 @@ class Expense(db.Model):
     date = db.Column(db.Date, nullable=False)
     expense_category = db.Column(db.String(100), nullable=False)
     expense_amount = db.Column(db.Numeric(10, 2), nullable=False)
-"""
+
 # Create schemas if they don't exist
 with app.app_context():
-    #db.drop_all()
     db.create_all()
 
 from functools import wraps
@@ -223,6 +148,7 @@ def dashboard():
         "total_expenses": total_expenses,
         "savings": savings,
         "expenses": [{
+            "id": exp.id,  # <--- THIS WAS MISSING!
             "category": exp.expense_category,
             "amount": float(exp.expense_amount),
             "dayname": exp.day_name,
@@ -293,29 +219,37 @@ def add_data():
         flash('You must login to do this task!', 'error')
         return redirect(url_for('login'))
 
+    # Initialize target page early so exception block never throws UnboundLocalError
+    flag = request.form.get('flag', '').strip()
+    target_page = 'dashboard' if flag == 'index' else 'all_budgets'
+
     try:
         if request.method == 'POST':
             username = session.get('username')
-            date = request.form.get('date', '').strip()
+            date = request.form.get('exp_date', '').strip()
             exp_category = request.form.get('exp_category', '').strip()
             exp_amount = request.form.get('exp_amount', '').strip()
             user_id = session.get('user_id')
+
+            # Validation: Missing fields
             if not all([date, exp_category, exp_amount]):
                 flash('All fields are required!', 'error')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for(target_page))
 
+            # Validation: Alphabetical category
             if not exp_category.replace(" ", "").isalpha():
                 flash('Expense category must contain only letters and spaces!', 'error')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for(target_page))
 
+            # Validation: Numeric positive amount
             try:
                 exp_amount = float(exp_amount)
                 if exp_amount <= 0:
                     flash('Expense amount must be positive!', 'error')
-                    return redirect(url_for('dashboard'))
+                    return redirect(url_for(target_page))
             except ValueError:
                 flash('Expense amount must be a valid number!', 'error')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for(target_page))
 
             month_map = {
                 '01': 'January', '02': 'February', '03': 'March', '04': 'April',
@@ -323,6 +257,7 @@ def add_data():
                 '09': 'September', '10': 'October', '11': 'November', '12': 'December'
             }
 
+            # Validation: Date format parsing
             try:
                 month = date[5:7]
                 month_name = month_map[month]
@@ -330,56 +265,148 @@ def add_data():
                 day_name = date_obj.strftime("%A")
             except (IndexError, KeyError, ValueError):
                 flash('Invalid date format! Please use YYYY-MM-DD.', 'error')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for(target_page))
 
+            # Database Lookup
             budget = UserBudget.query.filter_by(user_id=user_id, username=username, month_name=month_name).first()
 
             if not budget:
-                flash("Please create the month's budget first!", "error")
-                return redirect(url_for('dashboard'))
+                msg = (
+                    f"Please create a budget for {month_name} using the 'Budget Controls' section on the left."
+                    if flag == 'index'
+                    else f"No budget exists for {month_name}. Please add a budget for {month_name} first."
+                )
+                flash(msg, "error")
+                return redirect(url_for(target_page))
 
-            budget_id = budget.id
-
-            new_expense = Expense(user_id=user_id, budget_id=budget_id, day_name=day_name, month_name=month_name, date=date, expense_category=exp_category, expense_amount=exp_amount)
+            # DB Insertion
+            new_expense = Expense(
+                user_id=user_id,
+                budget_id=budget.id,
+                day_name=day_name,
+                month_name=month_name,
+                date=date,
+                expense_category=exp_category,
+                expense_amount=exp_amount
+            )
             db.session.add(new_expense)
             db.session.commit()
 
-            # Calculate total expenses and savings
-            expenses = Expense.query.filter_by(budget_id=budget_id).all()
+            # Recalculate totals
+            expenses = Expense.query.filter_by(budget_id=budget.id).all()
             total_expenses = sum(float(exp.expense_amount) for exp in expenses)
             savings = float(budget.monthly_income) - total_expenses
 
-            # Update UserBudget table
+            # Update budget record
             budget.total_expenses = total_expenses
             budget.savings = savings
             db.session.commit()
-            
+
             session['selected_month'] = month_name
             flash("Expense added successfully!", 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for(target_page))
 
     except Exception as e:
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for(target_page))
+        
+from flask import session, flash, redirect, url_for, request
+
+@app.route('/delete_month', methods=['POST'])
+def delete_month():
+    # 1. Authentication Guard
+    if 'user_id' not in session:
+        flash("Session expired! Please login again.", 'error')
+        return redirect(url_for('login'))
+
+    user_id = session.get("user_id")
+    month_name = request.form.get('month_name')
+
+    if not month_name:
+        flash("Invalid request! Missing month parameters.", 'error')
+        return redirect(url_for('index'))
+
+    try:
+        # 2. Query record matching BOTH user_id and month_name (Ensures User Data Isolation)
+        budget_to_delete = UserBudget.query.filter_by(
+            user_id=user_id,
+            month_name=month_name
+        ).first()
+
+        if budget_to_delete:
+            db.session.delete(budget_to_delete)
+            db.session.commit()
+            flash(f"Budget for {month_name} deleted successfully!", 'success')
+            return redirect(url_for('index'))
+        else:
+            flash("Budget record not found.", 'error')
+            return redirect(url_for('index'))
+
+    except Exception as e:
+        db.session.rollback()  # Always rollback broken sessions
+        flash("Unable to process request right now. Please try again.", 'error')
+        return redirect(url_for('dashboard'))  # Redirect on error
+
+
+@app.route('/edit_income', methods=['POST'])
+def edit_income():
+    if 'user_id' not in session:
+        flash("Please log in to make changes.", 'error')
+        return redirect(url_for('login'))
+
+    user_id = session.get('user_id')
+    target_page = request.form.get('target_page', 'dashboard').strip()
+    month_name = request.form.get('month_name')
+    raw_income = request.form.get('new_income')
+
+    if not raw_income:
+        flash("Please enter a new income amount.", 'error')
+        return redirect(url_for(target_page))
+
+    try:
+        new_income = float(raw_income)
+    except ValueError:
+        flash("Invalid income value entered.", 'error')
+        return redirect(url_for(target_page))
+
+    try:
+        budget = UserBudget.query.filter_by(user_id=user_id, month_name=month_name).first()
+        if budget:
+            if budget.monthly_income == new_income:
+                flash('No changes were made to monthly income.', 'info')
+            else:
+                budget.monthly_income = new_income
+                db.session.commit()
+                flash('Monthly income updated successfully!', 'success')
+        else:
+            flash('Budget record not found.', 'error')
+
+    except Exception:
+        db.session.rollback()
+        flash('Failed to update income. Please try again.', 'error')
+
+    return redirect(url_for(target_page))
+
+from flask import render_template, request, redirect, url_for, flash, session, make_response
+from datetime import datetime
 
 @app.route("/all-budgets", methods=["GET"])
 @never_cache
 def all_budgets():
     if 'user_id' not in session:
         flash('Session expired! Please login again', 'error')
-        return redirect(url_for('default'))
+        return redirect(url_for('login'))
 
     username = session.get('username')
     user_id = session['user_id']
     expiry_time = session.get('session_expiry', 0)
-    # Calculate remaining session time
     current_time = datetime.now().timestamp()
 
     if current_time > expiry_time:
         session.clear()
         flash('Session time expired! Please login again', 'error')
-        return redirect(url_for('default'))
+        return redirect(url_for('login'))
 
     try:
         all_budgets = UserBudget.query.filter_by(username=username).order_by(UserBudget.id.desc()).all()
@@ -398,7 +425,9 @@ def all_budgets():
 
             for exp in expenses:
                 amount = float(exp.expense_amount)
+                # ADDED: "id": exp.id so template has access to expense primary keys
                 expense_items.append({
+                    "id": exp.id,
                     "category": exp.expense_category,
                     "amount": amount,
                     "day_name": exp.day_name,
@@ -438,6 +467,87 @@ def all_budgets():
     except Exception as e:
         flash(f"Error retrieving budget data: {str(e)}", "error")
         return render_template("Allbudgets.html", username=username, budgets=[])
+
+
+@app.route('/edit_expense', methods=['POST'])
+def edit_expense():
+    if 'user_id' not in session:
+        flash("Please log in to make changes.", 'error')
+        return redirect(url_for('login'))
+
+    user_id = session.get('user_id')
+    expense_id = request.form.get('expense_id')
+    raw_category = request.form.get('category')
+    raw_amount = request.form.get('amount')
+
+    if not raw_category or not raw_amount:
+        flash("Please enter both category and expense amount.", 'error')
+        return redirect(url_for('all_budgets'))
+
+    try:
+        new_amount = float(raw_amount)
+    except ValueError:
+        flash("Invalid expense amount entered.", 'error')
+        return redirect(url_for('all_budgets'))
+
+    new_category = raw_category.strip()
+
+    try:
+        expense = db.session.get(Expense, int(expense_id)) if expense_id else None
+
+        if expense and expense.user_id == user_id:
+            if expense.expense_category == new_category and float(expense.expense_amount) == new_amount:
+                flash('No changes were made to the expense.', 'info')
+            else:
+                expense.expense_category = new_category
+                expense.expense_amount = new_amount
+                db.session.commit()
+                flash('Expense updated successfully!', 'success')
+        else:
+            flash('Expense record not found.', 'error')
+
+    except Exception as e:
+        db.session.rollback()
+        flash('Failed to update expense. Please try again.', 'error')
+
+    # UPDATED: Redirects back to all_budgets page
+    return redirect(url_for('all_budgets'))
+
+
+@app.route('/delete_expense', methods=['POST'])
+def delete_expense():
+    if 'user_id' not in session:
+        flash("Please log in first.", 'error')
+        return redirect(url_for('login'))
+
+    user_id = session.get('user_id')
+    expense_id = request.form.get('expense_id')
+
+    if not expense_id:
+        flash("Missing expense identifier.", 'error')
+        return redirect(url_for('all_budgets'))
+
+    try:
+        expense = db.session.get(Expense, int(expense_id))
+        
+        if expense:
+            owner_id = getattr(expense, 'user_id', None) or getattr(expense.budget, 'user_id', None)
+            
+            if owner_id == user_id:
+                db.session.delete(expense)
+                db.session.commit()
+                flash('Expense item deleted successfully!', 'success')
+            else:
+                flash('Permission denied.', 'error')
+        else:
+            flash('Expense record not found.', 'error')
+
+    except Exception as e:
+        db.session.rollback()
+        flash('Failed to remove expense.', 'error')
+
+    # UPDATED: Redirects back to all_budgets page
+    return redirect(url_for('all_budgets'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -720,44 +830,14 @@ def change_pass():
                 flash("We are unable to process your request right now. Please try again later.", "error")
 
     return render_template('Changepass.html')
-
-@app.route('/delete_month', methods=['POST'])
-def delete_month():
-    if 'user_id' not in session:
-        flash("Session expired! please login again.", 'error')
-        return redirect(url_for('login'))
-    elif request.method == 'POST':
-        month_name = request.form['month_name']
-        user_id = session.get("user_id")
-        username = session.get("username")
-
-        if not user_id or not username or not month_name:
-            flash("Invalid request! please login now.", 'error')
-            return redirect(url_for('login'))
-
-        try:
-            # Query for the specific UserBudget record to delete
-            budget_to_delete = UserBudget.query.filter_by(
-                username=username,
-                month_name=month_name
-            ).first()
-
-            if budget_to_delete:
-                db.session.delete(budget_to_delete)
-                db.session.commit()
-                flash("Selected month deleted successfully!", 'success')
-                return redirect(url_for('dashboard'))
-
-            else:
-                flash(f"We are unable to process right now! Please try again.",'error')
-
-        except Exception as e:
-            flash(f"We are unable to process right now! Please try again.",'error')
-    return None
-
+    
 @app.route('/about_us')
 def about_us():
     return render_template('Aboutus.html')
+
+@app.route('/services')
+def services():
+    return render_template('Services.html')
 
 @app.route('/contact_us', methods=['GET', 'POST'])
 def contact_us():

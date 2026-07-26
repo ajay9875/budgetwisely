@@ -3,46 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: Login</title>
+    <title>Budget Wisely: Contact Us</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 Vector Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- External CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
     <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Contact.css') }}">
 
 </head>
 <body>
-        <!-- Flash Messages -->
-        <div class="message">    
-            {% with messages = get_flashed_messages(with_categories=True) %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                            <div class="flash-message {{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
+
+    <!-- Header Navigation -->
+    <header class="header-nav">
+        <div class="header-content">
+            <a href="{{ url_for('default') }}" class="back-link" title="Return Home">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Home</span>
+            </a>
+            <h2><i class="fa-solid fa-envelope-open-text header-icon"></i> Contact Us</h2>
+        </div>
+    </header>
+
+    <!-- Flash Messages -->
+    <div class="message">    
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="all">
+        <div class="auth-container">
+            
+            <div class="form-header">
+                <h2>Get in Touch</h2>
+                <p>Have questions or feedback? Send us a message below.</p>
             </div>
-            <div class="all">
-                <div class="auth-container">
+
+            <form method="POST" action="{{ url_for('contact_us') }}" class="contact-form">
+                
+                <!-- Full Name Input -->
+                <div class="input-group">
+                    <i class="fa-solid fa-user input-icon"></i>
+                    <input type="text" name="name" placeholder="Full Name" required autocomplete="name">
+                </div>
+
+                <!-- Phone Number Input -->
+                <div class="input-group">
+                    <i class="fa-solid fa-phone input-icon"></i>
+                    <input type="tel" name="number" placeholder="Phone Number" required autocomplete="tel">
+                </div>
+
+                <!-- Email Input -->
+                <div class="input-group">
+                    <i class="fa-solid fa-envelope input-icon"></i>
+                    <input type="email" name="email" placeholder="Enter Email" required autocomplete="email">
+                </div>
+
+                <!-- Textarea Input -->
+                <div class="input-group textarea-group">
+                    <i class="fa-solid fa-comment-dots input-icon"></i>
+                    <textarea name="message" placeholder="Type your message here..." rows="4" required></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-btn">
+                    <i class="fa-solid fa-paper-plane"></i> Send Message
+                </button>
+            </form>            
             
-                    <h2>Contact Us</h2>
-                    <form method="POST" action="{{ url_for('contact_us') }}">
-                            <input type="text" name="name" placeholder="Full Name" required>
-            
-                            <input type="number" name="number" placeholder="Phone Number" required>
-            
-                            <input type="email" name="email" placeholder="Enter Email" required>
-            
-                            <textarea name="message" placeholder="Type your message here..." rows="4" cols="200" style="max-width: 315px;"></textarea>            
-                            <br><button type="submit">Submit</button>
-                        </form>            
-                        <br>
-                        <a href="{{ url_for('default') }}">Back to Home</a>
-                          </div>
-                    </div>
-            
+            <div class="form-footer">
+                <a href="{{ url_for('default') }}" class="home-link">
+                    <i class="fa-solid fa-house"></i> Back to Home
+                </a>
+            </div>
+
+        </div>
+    </main>
+
 </body>
 </html>
-
-

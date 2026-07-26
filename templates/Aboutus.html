@@ -3,82 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: About Us</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Aboutus.css')}}">
+    <title>Budget Wisely | About Us</title>
+    <!-- Fonts & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Aboutus.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
 </head>
 <body>
+
+    <!-- Modern Header Navbar -->
     <header>
-        <a href="{{ url_for('default') }}"><img src="{{ url_for('static', filename='icon/homeicon.png') }}"></a>
-        <h2>About Us</h2>
+        <div class="header-content">
+            <a href="{{ url_for('default') }}" class="back-link" title="Return Home">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Home</span>
+            </a>
+            <h2><i class="fa-solid fa-circle-info header-icon"></i> About Us</h2>
+        </div>
     </header>
-    
 
     <div class="container">
-        <section class="section">
+        <!-- Hero Introduction Section -->
+        <section class="hero-section">
+            <div class="hero-badge"><i class="fa-solid fa-heart-pulse"></i> Your Personal Finance Companion</div>
+            <h1>Empowering Your Financial Journey</h1>
+            <p class="hero-text">
+                At <strong>Budget Wisely</strong>, we believe that managing your finances shouldn't feel overwhelming. We provide the tools, clarity, and support you need to track your income, monitor expenses, and gain full control over your financial health.
+            </p>
+        </section>
 
-        <h4>Option 1: Emphasizing User Empowerment</h4>
-        <p>
-            At Budget Wisely, we're more than just a budgeting tool; we're your personal finance companion. We understand that managing your finances can feel overwhelming, and we're here to empower you with the clarity and control you need. Our platform is designed to simplify your financial life, providing you with the insights and resources to make informed decisions and achieve your financial goals.
-        </p>
-            <h4>Option 2: Focusing on Practicality and Support</h4>
-        <p>
-            Budget Wisely is your dedicated personal finance companion, designed to make budgeting and financial management straightforward and stress-free. We provide the tools and support you need to track your income, monitor expenses, and gain a clear understanding of your financial standing.  Whether you're saving for a specific goal or simply aiming for better financial health, we're here to guide you every step of the way.
-        </p>
-        <h4>Option 3: Highlighting the Relationship with the User</h4>
-        <p>Welcome to Budget Wisely, your trusted personal finance companion.  We believe that a strong relationship with your money is key to a secure future.  That's why we've created a platform that puts you in the driver's seat, providing you with a user-friendly way to manage your budget, understand your spending, and work towards your financial aspirations.  We're committed to being your partner in achieving financial well-being.</p>
+        <!-- Mission Statement -->
+        <section class="section mission-card">
+            <div class="section-icon-wrapper">
+                <i class="fa-solid fa-bullseye"></i>
+            </div>
+            <div class="section-text">
+                <h2>Our Mission</h2>
+                <p>
+                    Our mission at BudgetWisely.com is to democratize financial literacy and enable everyone to make informed, data-driven decisions. We build intuitive tools to make budgeting seamless, accessible, and stress-free for everyone.
+                </p>
+            </div>
         </section>
+
+        <!-- What We Offer -->
         <section class="section">
-            <h2>Our Mission</h2>
-            <p>
-                At BudgetWisely.com, our mission is to empower individuals to make informed financial decisions by providing them with the tools and knowledge they need to manage their money effectively. We believe that everyone deserves financial well-being, and we are committed to making that a reality for our users.
-            </p>
-        </section>
-        <section class="section">
-            <h2>What We Offer</h2>
-            <p>
-                BudgetWisely.com offers a range of features to help you manage your finances:
-            </p>
-            <ul class="values-list">
-                <li><strong>Monthly Budgeting:</strong> Set your monthly income and allocate funds to different expense categories.</li>
-                <li><strong>Expense Tracking:</strong> Easily record your daily expenses and categorize them for better analysis.</li>
-                <li><strong>Budget Overview:</strong> Get a clear picture of your income, expenses, and savings with our intuitive budget overview.</li>
-                <li><strong>Visualizations:</strong> Understand your spending patterns with informative charts and graphs.</li>
-                <li><strong>Personalized Insights:</strong> See how much you're saving, spending, and where you can optimize.</li>
-            </ul>
-        </section>
-        <section class="section">
-            <h2>Our Team</h2>
-            <div class="team-members">
-                <div class="team-member">
-                    <h3>Developer Name</h3>
-                    <strong>AJAY KUMAR SAH</strong>
-                    <p>
-                        Passionate about creating user-friendly and helpful web applications.
-                    </p>
+            <h2 class="section-title"><i class="fa-solid fa-cubes"></i> What We Offer</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="fa-solid fa-wallet feature-icon"></i>
+                    <h3>Monthly Budgeting</h3>
+                    <p>Set your monthly income allocations and track allocations across categories effortlessly.</p>
                 </div>
-                <div class="team-member">
-                    <h3>Designer Name</h3>
-                    <strong>AJAY KUMAR SAH</strong>
-                    <p>
-                       Focused on creating intuitive and visually appealing interfaces.
-                    </p>
+                <div class="feature-card">
+                    <i class="fa-solid fa-receipt feature-icon"></i>
+                    <h3>Expense Tracking</h3>
+                    <p>Log daily transactions and categorize spending patterns in real-time.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-chart-pie feature-icon"></i>
+                    <h3>Visual Analytics</h3>
+                    <p>Gain actionable insights with clear, interactive charts and percentage distribution breakdowns.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-lightbulb feature-icon"></i>
+                    <h3>Personalized Insights</h3>
+                    <p>Identify savings opportunities and optimize spending choices every month.</p>
                 </div>
             </div>
         </section>
+
+        <!-- Why Choose Us -->
         <section class="section">
-            <h2>Why Choose BudgetWisely.com?</h2>
-            <ul class="values-list">
-                <li><strong>Simple and Intuitive:</strong> Our platform is designed to be easy to use, even if you're new to budgeting.</li>
-                <li><strong>Customizable:</strong> Tailor your budget to fit your specific financial situation and goals.</li>
-                <li><strong>Data-Driven:</strong> Make informed decisions based on clear and accurate data.</li>
-                <li><strong>Accessible:</strong> Access your budget anytime, anywhere.</li>
-            </ul>
+            <h2 class="section-title"><i class="fa-solid fa-shield-halved"></i> Why Choose Budget Wisely?</h2>
+            <div class="benefits-grid">
+                <div class="benefit-item">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div>
+                        <strong>Simple & Intuitive:</strong> Designed with clean visual hierarchies for quick navigation.
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div>
+                        <strong>Fully Customizable:</strong> Flexible fields tailored to match your specific financial goals.
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div>
+                        <strong>Data-Driven Precision:</strong> Accurate calculations ensuring every cent is accounted for.
+                    </div>
+                </div>
+                <div class="benefit-item">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div>
+                        <strong>Accessible Everywhere:</strong> Responsive architecture optimized for desktop, tablet, and mobile browsers.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team Section -->
+        <section class="section">
+            <h2 class="section-title"><i class="fa-solid fa-users"></i> Meet Our Team</h2>
+            <div class="team-members">
+                <div class="team-member">
+                    <div class="avatar-icon">
+                        <i class="fa-solid fa-code"></i>
+                    </div>
+                    <h3>Developer</h3>
+                    <strong>AJAY KUMAR SAH</strong>
+                    <p>Passionate about crafting robust, responsive web applications and reliable logic.</p>
+                </div>
+                <div class="team-member">
+                    <div class="avatar-icon">
+                        <i class="fa-solid fa-pen-nib"></i>
+                    </div>
+                    <h3>UI/UX Designer</h3>
+                    <strong>AJAY KUMAR SAH</strong>
+                    <p>Focused on constructing elegant, clean interfaces with frictionless user experiences.</p>
+                </div>
+            </div>
         </section>
     </div>
+
+    <!-- Footer -->
     <footer>
-        <p>&copy; 2025 Budget Wisely(Monthly Budget Calculator). All Rights Reserved.</p>
+        <p>&copy; 2026 Budget Wisely (Monthly Budget Calculator). All Rights Reserved.</p>
     </footer>
+
 </body>
 </html>

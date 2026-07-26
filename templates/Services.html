@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Our Services | Professional Solutions</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Services.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Aboutus.css') }}">
+
+</head>
+<body>
+
+<!-- Modern Header Navbar -->
+<header class="header-nav">
+    <div class="header-content">
+        <a href="{{ url_for('default') }}" class="back-link" title="Return Home">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Home</span>
+        </a>
+        <h2><i class="fa-solid fa-briefcase header-icon"></i> Our Services</h2>
+    </div>
+</header>
+
+
+
+  <!-- Services Grid Section -->
+  <main class="services-section">
+    <div class="container">
+        <!-- Hero Section -->
+    <div class="container hero-content">
+      <span class="badge">What We Offer</span>
+      <h1>High-Impact Services Built for Your Growth</h1>
+      <p>We deliver modern, scalable, and custom tailored solutions to take your business to the next level.</p>
+    </div>
+      <!-- Filter Controls -->
+      <div class="filter-container">
+        <button class="filter-btn active" data-filter="all">All Services</button>
+        <button class="filter-btn" data-filter="tech">Technology</button>
+        <button class="filter-btn" data-filter="design">Design</button>
+        <button class="filter-btn" data-filter="growth">Growth</button>
+      </div>
+
+      <!-- Services Grid -->
+      <div class="services-grid">
+
+        <!-- Service 1 -->
+        <article class="service-card" data-category="tech">
+          <div class="icon-wrapper">
+            <i class="fa-solid fa-laptop-code"></i>
+          </div>
+          <h3>Web Development</h3>
+          <p>Custom, lightning-fast web applications built using cutting-edge frameworks tailored to your business needs.</p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> Responsive Design</li>
+            <li><i class="fa-solid fa-check"></i> SEO & Performance Optimized</li>
+          </ul>
+          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <!-- Service 2 -->
+        <article class="service-card" data-category="design">
+          <div class="icon-wrapper">
+            <i class="fa-solid fa-palette"></i>
+          </div>
+          <h3>UI/UX Design</h3>
+          <p>User-centered interface designs and seamless user experiences that convert visitors into loyal customers.</p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> Wireframing & Prototyping</li>
+            <li><i class="fa-solid fa-check"></i> Design Systems</li>
+          </ul>
+          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <!-- Service 3 -->
+        <article class="service-card" data-category="growth">
+          <div class="icon-wrapper">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <h3>Digital Marketing</h3>
+          <p>Data-driven marketing strategies designed to increase reach, generate quality leads, and boost revenue.</p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> SEO & Content Strategy</li>
+            <li><i class="fa-solid fa-check"></i> Social Media & Ads</li>
+          </ul>
+          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <!-- Service 4 -->
+        <article class="service-card" data-category="tech">
+          <div class="icon-wrapper">
+            <i class="fa-solid fa-cloud"></i>
+          </div>
+          <h3>Cloud Solutions</h3>
+          <p>Secure, scalable cloud infrastructure and DevOps services to optimize speed and application uptime.</p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> AWS & Azure Management</li>
+            <li><i class="fa-solid fa-check"></i> Automated CI/CD Pipelines</li>
+          </ul>
+          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <!-- Service 5 -->
+        <article class="service-card" data-category="growth">
+          <div class="icon-wrapper">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <h3>Cybersecurity</h3>
+          <p>Comprehensive security audits and end-to-end protection to keep your company and customer data safe.</p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> Threat Assessment</li>
+            <li><i class="fa-solid fa-check"></i> Compliance & Monitoring</li>
+          </ul>
+          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <!-- Service 6 -->
+        <article class="service-card" data-category="design">
+          <div class="icon-wrapper">
+            <i class="fa-solid fa-bullhorn"></i>
+          </div>
+          <h3>Brand Identity</h3>
+          <p>Stand out from the crowd with custom logo design, color palettes, typography, and brand messaging.</p>
+          <ul class="feature-list">
+            <li><i class="fa-solid fa-check"></i> Logo & Brand Guidelines</li>
+            <li><i class="fa-solid fa-check"></i> Marketing Assets</li>
+          </ul>
+          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Call To Action Section -->
+  <section class="cta-section">
+    <div class="container cta-content">
+      <h2>Have a Project in Mind?</h2>
+      <p>Let's talk about how we can help transform your ideas into reality.</p>
+      <a href="{{ url_for('contact_us') }}" class="cta-btn"><i class="fa-solid fa-paper-plane"></i> Get in Touch</a>
+    </div>
+  </section>
+
+  <!-- Custom JavaScript -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+  const filterButtons = document.querySelectorAll(".filter-btn");
+  const serviceCards = document.querySelectorAll(".service-card");
+
+  // Filtering Logic
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      // 1. Manage Active Class on Buttons
+      filterButtons.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+
+      // 2. Filter Cards
+      const filterValue = button.getAttribute("data-filter");
+
+      serviceCards.forEach((card) => {
+        const cardCategory = card.getAttribute("data-category");
+
+        if (filterValue === "all" || filterValue === cardCategory) {
+          card.classList.remove("hide");
+        } else {
+          card.classList.add("hide");
+        }
+      });
+    });
+  });
+});
+  </script>
+</body>
+</html>

@@ -1,66 +1,256 @@
-body{
-    background: rgb(241, 241, 241);
+/* ================================
+   1. GLOBAL & RESET STYLES
+   ================================ */
+:root {
+  --primary-color: #27ae60;
+  --primary-hover: #219150;
+  --bg-color: #f8fafc;
+  --card-bg: #ffffff;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --focus-ring: rgba(39, 174, 96, 0.2);
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --transition: all 0.25s ease-in-out;
 }
-.all{
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ================================
+   2. HEADER NAVBAR
+   ================================ */
+.header-nav {
+  background-color: #1e293b;
+  padding: 1rem 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.back-link:hover {
+  color: #ffffff;
+  transform: translateX(-3px);
+}
+
+.header-content h2 {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.header-icon {
+  color: #6366f1;
+  font-size: 1.1rem;
+}
+
+/* ================================
+   3. CONTAINER & FORM CARD
+   ================================ */
+.all {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 3rem) 1rem;
 }
 
 .auth-container {
-    background: white;
-    padding: 20px 40px 20px 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    width: 300px;
-    height: fit-content;
+  background: var(--card-bg);
+  width: 100%;
+  max-width: 440px;
+  padding: clamp(1.75rem, 5vw, 2.5rem);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-color);
 }
 
-.auth-container h2 {
-    margin-bottom: 20px;
+.form-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
 }
 
-.auth-container input {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-.auth-container textarea{
-    width: 100%;
-    margin-bottom: 100px;
- }
-
-.auth-container button {
-    width: 107%;
-    padding: 10px;
-    background: #28a745;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
+.form-header h2 {
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  color: var(--text-main);
+  font-weight: 700;
+  margin-bottom: 0.35rem;
 }
 
-.auth-container button:hover {
-    background: #218838;
+.form-header p {
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }
 
-.auth-container p {
-    margin-top: 10px;
-    font-size: 14px;
+/* ================================
+   4. INPUT FIELDS & ICONS
+   ================================ */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
 }
 
-.auth-container a {
-    color: #007bff;
-    text-decoration: none;
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.auth-container a:hover {
-    text-decoration: underline;
+.input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  pointer-events: none;
+  transition: var(--transition);
+}
+
+.input-group input,
+.input-group textarea {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.6rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  background-color: #f8fafc;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: var(--transition);
+}
+
+.input-group.textarea-group {
+  align-items: flex-start;
+}
+
+.textarea-group .input-icon {
+  top: 14px;
+}
+
+.input-group textarea {
+  resize: vertical;
+  min-height: 100px;
+  max-height: 220px;
+}
+
+/* Focus States */
+.input-group input:focus,
+.input-group textarea:focus {
+  border-color: var(--primary-color);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.input-group input:focus + .input-icon,
+.input-group textarea:focus + .input-icon,
+.input-group:focus-within .input-icon {
+  color: var(--primary-color);
+}
+
+/* ================================
+   5. BUTTON & FOOTER
+   ================================ */
+.submit-btn {
+  width: 100%;
+  padding: 0.85rem;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: var(--transition);
+}
+
+.submit-btn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
+}
+
+.form-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.home-link {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: var(--transition);
+}
+
+.home-link:hover {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+/* ================================
+   6. RESPONSIVE BREAKPOINTS
+   ================================ */
+@media (max-width: 576px) {
+  .header-nav {
+    padding: 0.85rem 1rem;
+  }
+  
+  .header-content h2 {
+    font-size: 1.05rem;
+  }
+
+  .auth-container {
+    padding: 1.5rem 1.25rem;
+  }
 }
