@@ -394,7 +394,7 @@ def add_data():
 
             # Extract target month from form (if provided by UI card)
             target_month_name = request.form.get('month_name', '').strip()
-            
+
             # Validation: Date format parsing
             try:
                 month = date[5:7]
@@ -615,6 +615,269 @@ def delete_expense():
 
     # UPDATED: Redirects back to all_budgets page
     return redirect(url_for(target_page))
+
+# Weekly Report Email Sending Route
+import os
+import smtplib
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from flask import jsonify
+
+import os
+import smtplib
+from datetime import datetime
+from collections import defaultdict
+from urllib.parse import quote
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_weekly_budget_reports():
+    sender_email = os.getenv('SENDER_EMAIL')
+    sender_password = os.getenv('SENDER_PASS')
+    app_url = "https://budgetwisely.pythonanywhere.com"
+
+    if not sender_email or not sender_password:
+        print("❌ Email credentials missing in environment variables")
+        return False
+
+    try:
+        users = User.query.all()
+        if not users:
+            print("No users found in database.")
+            return False
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            emails_sent = 0
+
+            for user in users:
+                try:
+                    # 1. Fetch current month data
+                    current_month_name = datetime.now().strftime("%B")  # e.g., "July"
+                    budget = UserBudget.query.filter_by(
+                        user_id=user.user_id, 
+                        month_name=current_month_name
+                    ).first()
+
+                    expenses = Expense.query.filter_by(
+                        user_id=user.user_id,
+                        month_name=current_month_name
+                    ).order_by(Expense.date.desc()).all()
+
+                    # Skip if no budget setup and no expenses logged
+                    if not budget and not expenses:
+                        print(f"⏩ Skipped {user.email}: No records for {current_month_name}.")
+                        continue
+
+                    # 2. Financial Calculations
+                    monthly_income = float(budget.monthly_income) if budget else 0.00
+                    total_expenses = sum(float(e.expense_amount) for e in expenses)
+                    net_savings = monthly_income - total_expenses
+                    
+                    savings_percent = round((net_savings / monthly_income) * 100, 1) if monthly_income > 0 else 0
+                    expense_percent = round((total_expenses / monthly_income) * 100, 1) if monthly_income > 0 else 0
+                    savings_color = "#27ae60" if net_savings >= 0 else "#e74c3c"
+
+                    # 3. Aggregate Expenses by Category for Chart
+                    cat_totals = defaultdict(float)
+                    for exp in expenses:
+                        cat_totals[exp.expense_category] += float(exp.expense_amount)
+
+                    # Build QuickChart API Donut Chart URL
+                    chart_html = ""
+                    if cat_totals:
+                        cat_labels = list(cat_totals.keys())[:5]
+                        cat_values = [round(cat_totals[k], 2) for k in cat_labels]
+                        
+                        chart_config = f"""{{
+                            type: 'doughnut',
+                            data: {{
+                                labels: {cat_labels},
+                                datasets: [{{
+                                    data: {cat_values},
+                                    backgroundColor: ['#27ae60', '#3498db', '#e74c3c', '#f1c40f', '#9b59b6']
+                                }}]
+                            }},
+                            options: {{
+                                plugins: {{
+                                    legend: {{ position: 'bottom', labels: {{ color: '#94a3b8', font: {{ size: 10 }} }} }},
+                                    title: {{ display: true, text: 'Expense Breakdown by Category', color: '#ffffff', font: {{ size: 12 }} }}
+                                }}
+                            }}
+                        }}"""
+                        
+                        encoded_config = quote(chart_config.replace('\n', '').replace(' ', ''))
+                        chart_url = f"https://quickchart.io/chart?c={encoded_config}&w=450&h=220&bkg=transparent"
+                        
+                        chart_html = f"""
+                        <div style="text-align: center; margin: 20px 0; background-color: #0f172a; padding: 15px; border-radius: 12px; border: 1px solid #334155;">
+                            <img src="{chart_url}" alt="Expense Breakdown Chart" style="max-width: 100%; height: auto; border: 0;" />
+                        </div>
+                        """
+
+                    # 4. Generate Expense Table Rows
+                    if expenses:
+                        expense_rows = ""
+                        for exp in expenses[:6]:
+                            expense_rows += f"""
+                            <tr>
+                                <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #f8fafc;">{exp.expense_category}</td>
+                                <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8;">{exp.date}</td>
+                                <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #f87171; font-weight: bold; text-align: right;">₹{float(exp.expense_amount):,.2f}</td>
+                            </tr>
+                            """
+                        
+                        expense_table_html = f"""
+                        <h4 style="color: #4ade80; font-size: 12px; font-weight: 800; letter-spacing: 1px; margin: 24px 0 10px 0; text-transform: uppercase;">
+                            📋 Recent Transactions ({len(expenses)})
+                        </h4>
+                        <table style="width: 100%; border-collapse: collapse; background-color: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid #334155;" cellpadding="0" cellspacing="0">
+                            <thead>
+                                <tr style="background-color: #1e293b; text-align: left;">
+                                    <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase;">Category</th>
+                                    <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase;">Date</th>
+                                    <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase; text-align: right;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {expense_rows}
+                            </tbody>
+                        </table>
+                        """
+                    else:
+                        expense_table_html = """
+                        <div style="text-align: center; padding: 18px; background-color: #0f172a; border-radius: 12px; margin-top: 15px; border: 1px dashed #334155;">
+                            <p style="margin: 0; font-size: 13px; color: #94a3b8;">🎉 No expenses logged for this month yet!</p>
+                        </div>
+                        """
+
+                    # 5. Build Standardized HTML Email Layout
+                    html_body = f"""
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #0b1120; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                        
+                        <!-- Outer Outer Table Wrapper to force Top & Bottom Margins on Mobile & Web Gmail -->
+                        <table style="width: 100%; background-color: #0b1120; margin: 0; padding: 40px 10px;" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td align="center">
+                                    
+                                    <!-- Central Email Card -->
+                                    <table style="max-width: 540px; width: 100%; background-color: #1e293b; border-radius: 16px; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="padding: 32px 24px;">
+                                                
+                                                <!-- Header -->
+                                                <div style="text-align: center; margin-bottom: 24px;">
+                                                    <h1 style="margin: 0; font-size: 24px; color: #ffffff; font-weight: 800; letter-spacing: -0.5px;">💰 Budget Wisely</h1>
+                                                    <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">Weekly Financial Digest • {current_month_name}</p>
+                                                </div>
+
+                                                <p style="font-size: 14px; color: #e2e8f0; margin-bottom: 20px; line-height: 1.5;">
+                                                    Hi <strong>{user.name}</strong>, here is your real-time financial report for {current_month_name}:
+                                                </p>
+
+                                                <!-- Metric Cards -->
+                                                <table style="width: 100%; border-collapse: separate; border-spacing: 6px; margin-bottom: 20px;" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
+                                                            <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">INCOME</div>
+                                                            <div style="font-size: 14px; font-weight: bold; color: #4ade80;">₹{monthly_income:,.2f}</div>
+                                                        </td>
+                                                        <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
+                                                            <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">EXPENSES</div>
+                                                            <div style="font-size: 14px; font-weight: bold; color: #f87171;">₹{total_expenses:,.2f}</div>
+                                                            <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">({expense_percent}%)</div>
+                                                        </td>
+                                                        <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
+                                                            <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">SAVINGS</div>
+                                                            <div style="font-size: 14px; font-weight: bold; color: {savings_color};">₹{net_savings:,.2f}</div>
+                                                            <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">({savings_percent}%)</div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+
+                                                <!-- Progress Bar -->
+                                                <div style="margin-bottom: 20px; background-color: #0f172a; padding: 12px; border-radius: 10px; border: 1px solid #334155;">
+                                                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 6px;">
+                                                        <span>Budget Spent</span>
+                                                        <span style="font-weight: bold; color: #ffffff;">{expense_percent}%</span>
+                                                    </div>
+                                                    <div style="background-color: #334155; border-radius: 6px; height: 8px; overflow: hidden;">
+                                                        <div style="background-color: {'#f87171' if expense_percent > 90 else '#4ade80'}; width: {min(expense_percent, 100)}%; height: 8px; border-radius: 6px;"></div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Category Breakdown Chart -->
+                                                {chart_html}
+
+                                                <!-- Expense Table -->
+                                                {expense_table_html}
+
+                                                <!-- Button CTA -->
+                                                <div style="text-align: center; margin-top: 28px;">
+                                                    <a href="{app_url}" style="background-color: #22c55e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: bold; display: inline-block; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);">
+                                                        Control Your Budget
+                                                    </a>
+                                                </div>
+
+                                                <!-- Footer -->
+                                                <div style="height: 1px; background-color: #334155; margin: 28px 0 16px 0;"></div>
+                                                <p style="font-size: 11px; color: #ffffff; text-align: center; margin: 0;">
+                                                    Budget Wisely • Smart Financial Tracking
+                                                </p>
+
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                    </body>
+                    </html>
+                    """
+
+                    # 6. Send
+                    msg = MIMEMultipart("alternative")
+                    msg['From'] = sender_email
+                    msg['To'] = user.email
+                    msg['Subject'] = f"📊 Budget Summary for {current_month_name} - Budget Wisely"
+                    msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+
+                    server.send_message(msg)
+                    emails_sent += 1
+                    print(f"✅ Email report delivered to {user.email}")
+
+                except Exception as user_err:
+                    print(f"❌ Error sending to user ID {user.user_id}: {str(user_err)}")
+                    continue
+
+            return emails_sent > 0
+
+    except Exception as e:
+        print(f"❌ Fatal error: {str(e)}")
+        return False
+    
+# 🧪 Test Route: Trigger weekly budget digest manually
+@app.route('/api/send-weekly-budget-email')
+def trigger_weekly_budget_email():
+    print("🚀 Manual trigger: Sending weekly budget reports...")
+    try:
+        success = send_weekly_budget_reports()
+        if success:
+            return jsonify({"status": "success", "message": "Successfully sent weekly budget emails!"}), 200
+        else:
+            return jsonify({"status": "info", "message": "No emails sent. Check server logs."}), 200
+    except Exception as err:
+        return jsonify({"status": "error", "message": f"Execution error: {str(err)}"}), 500
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -943,4 +1206,4 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
