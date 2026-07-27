@@ -44,7 +44,6 @@ db = SQLAlchemy(app)
 # Database Models
 class User(db.Model):
     __tablename__ = 'users'
-    __table_args__ = {'schema': 'auth_schema'}
 
     user_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -54,10 +53,6 @@ class User(db.Model):
 
 class UserBudget(db.Model):
     __tablename__ = 'users_budget'
-    __table_args__ = (
-        db.UniqueConstraint('username', 'month_name', name='unique_user_month'),
-        {'schema': 'budget_schema'}
-    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, nullable=False)
@@ -71,7 +66,6 @@ class UserBudget(db.Model):
 
 class Expense(db.Model):
     __tablename__ = 'expenses'
-    __table_args__ = {'schema': 'budget_schema'}
 
     id = db.Column(db.Integer, primary_key=True)
     budget_id = db.Column(
