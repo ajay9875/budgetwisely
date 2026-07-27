@@ -230,6 +230,82 @@ def all_budgets():
         return redirect(url_for('login'))
 
     username = session.get('username')
+    user_id = int(session['user_id']) # Ensure integer type
+
+    # ... [Keep your session expiry check code here] ...
+
+    try:
+        all_budgets = UserBudget.query.filter_by(username=username).order_by(UserBudget.id.desc()).all()
+
+        if not all_budgets:
+            flash("No budget data found! Please add a month first.", "error")
+            return render_template("Allbudgets.html", username=username, budgets=[])
+
+        budget_data = []
+
+        for budget in all_budgets:
+            # FIX: Query expenses by budget_id directly. 
+            # Avoid filtering by user_id here to prevent DB type casting mismatches.
+            expenses = Expense.query.filter_by(budget_id=budget.id).all()
+
+            expense_items = []
+            total_expenses = 0.0
+
+            for exp in expenses:
+                amount = float(exp.expense_amount)
+                expense_items.append({
+                    "id": exp.id,
+                    "category": exp.expense_category,
+                    "expense_category": exp.expense_category,
+                    "amount": amount,
+                    "expense_amount": amount,
+                    "day_name": exp.day_name,
+                    "dayname": exp.day_name,
+                    "date": exp.date
+                })
+                total_expenses += amount
+
+            savings = float(budget.monthly_income) - total_expenses
+
+            expense_percentages = []
+            if float(budget.monthly_income) > 0:
+                expense_percentages = [
+                    {
+                        "category": item["category"],
+                        "percentage": round((item["amount"] / float(budget.monthly_income)) * 100, 2)
+                    }
+                    for item in expense_items
+                ]
+
+            budget_data.append({
+                "id": budget.id,
+                "month_name": budget.month_name,
+                "monthly_income": float(budget.monthly_income),
+                "total_expenses": total_expenses,
+                "savings": savings,
+                "savings_percentage": round((savings / float(budget.monthly_income)) * 100, 2) if float(budget.monthly_income) > 0 else 0,
+                "expenses": expense_items,
+                "expense_percentages": expense_percentages
+            })
+
+        response = make_response(render_template("Allbudgets.html", username=username, budgets=budget_data, now=datetime.now()))
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+
+    except Exception as e:
+        flash(f"Error retrieving budget data: {str(e)}", "error")
+        return render_template("Allbudgets.html", username=username, budgets=[])
+
+"""@app.route("/all-budgets", methods=["GET"])
+@never_cache
+def all_budgets():
+    if 'user_id' not in session:
+        flash('Session expired! Please login again', 'error')
+        return redirect(url_for('login'))
+
+    username = session.get('username')
     user_id = session['user_id']
     expiry_time = session.get('session_expiry', 0)
     current_time = datetime.now().timestamp()
@@ -297,7 +373,7 @@ def all_budgets():
     
     except Exception as e:
         flash(f"Error retrieving budget data: {str(e)}", "error")
-        return render_template("Allbudgets.html", username=username, budgets=[])
+        return render_template("Allbudgets.html", username=username, budgets=[])"""
 
 @app.route('/add_month', methods=['POST'])
 def add_month():

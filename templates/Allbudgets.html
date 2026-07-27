@@ -308,16 +308,16 @@
                     {% endif %}
 
                     <p class="small-text"><i class="fa-solid fa-arrows-rotate"></i> Last updated: {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
-                </div>
-                    </div>
-                </div>
-            {% endfor %}
-        {% else %}
-            <div class="no-data">
-                <i class="fa-solid fa-folder-open empty-icon"></i>
-                <p>No budget data found. Please add your first budget.</p>
-            </div>
-        {% endif %}
+                    </div> <!-- Closes .expense-details -->
+                </div> <!-- Closes .expenses -->
+            </div> <!-- Closes .budget-box -->
+        {% endfor %}
+    {% else %}
+        <div class="no-data">
+            <i class="fa-solid fa-folder-open empty-icon"></i>
+            <p>No budget data found. Please add your first budget.</p>
+        </div>
+    {% endif %}
 
     </main>
 
