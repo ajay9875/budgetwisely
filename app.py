@@ -69,8 +69,8 @@ class Expense(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     budget_id = db.Column(
-    db.Integer,
-    db.ForeignKey('budget_schema.users_budget.id', ondelete='CASCADE'),
+        db.Integer,
+        db.ForeignKey('users_budget.id', ondelete='CASCADE'),
     )
     user_id = db.Column(db.Integer, nullable=False)
     day_name = db.Column(db.String(20), nullable=False)
