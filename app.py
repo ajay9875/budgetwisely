@@ -1062,7 +1062,6 @@ def reset_password():
                 return redirect(url_for('forgot_password'))  # redirect user back to the password reset page.
     return render_template('Resetpass.html')
 
-#Change password for logged in user
 @app.route('/change_password', methods=['GET', 'POST'])
 @never_cache
 def change_pass():
@@ -1070,41 +1069,55 @@ def change_pass():
         flash("Session expired! Please login again.", 'error')
         return redirect(url_for('login'))
 
+    try:
+        user_id = int(session['user_id'])
+    except (ValueError, TypeError):
+        session.clear()
+        flash("Invalid session state. Please log in again.", "error")
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        session.clear()
+        flash("User context not found! Please login again.", "error")
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
-        user_id = session['user_id']
-        password = request.form.get('password', '').strip()
+        oldpassword = request.form.get('oldpassword', '').strip()
+        newpassword = request.form.get('newpassword', '').strip()
         cpassword = request.form.get('cpassword', '').strip()
 
-        # Validate passwords
-        if not password or not cpassword:
-            flash('Password fields cannot be empty!', 'error')
-        elif password[0].isdigit():
-            flash("Password must start with a letter!", "error")
-        elif len(password) < 6:
-            flash("Password too short (min 6 chars)!", "error")
-        elif password != cpassword:
-            flash('Passwords do not match! Please try again.', 'error')
+        # 1. Check for empty inputs
+        if not oldpassword or not newpassword or not cpassword:
+            flash('All password fields are required!', 'error')
+
+        # 2. Verify current/old password
+        elif not check_password_hash(user.password, oldpassword):
+            flash('Incorrect current password!', 'error')
+
+        # 3. Validation on new password rules
+        elif newpassword[0].isdigit():
+            flash("New password must start with a letter!", "error")
+        elif len(newpassword) < 6:
+            flash("New password must be at least 6 characters long!", "error")
+        elif newpassword != cpassword:
+            flash('New passwords do not match! Please verify and try again.', 'error')
+        elif oldpassword == newpassword:
+            flash('New password cannot be the same as your current password!', 'error')
+
+        # 4. Save updated password
         else:
             try:
-                print("DEBUG: user_id =", user_id)
-                user = User.query.get(user_id)
-                print("DEBUG: user =", user)
-
-                if not user:
-                    flash("User not found! Please try again.", "error")
-                    return render_template('Changepass.html')
-
-                user.password = generate_password_hash(password)
+                user.password = generate_password_hash(newpassword)
                 db.session.commit()
-                flash("Password changed successfully!", "success")
+                flash("Password updated successfully!", "success")
                 return redirect(url_for('dashboard'))
 
             except Exception as e:
                 db.session.rollback()
-                print("Exception in change_pass:", e)
-                flash("We are unable to process your request right now. Please try again later.", "error")
+                flash("Unable to update password right now. Please try again later.", "error")
 
-    return render_template('Changepass.html')
+    return render_template('Changepass.html', username=user.name)
     
 @app.route('/about_us')
 def about_us():
@@ -1151,4 +1164,4 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

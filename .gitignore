@@ -1,6 +1,6 @@
 .gitignore
 # Virtual environment
-env/
+venv/
 .env
 
 # Python
