@@ -1,37 +1,41 @@
-from calendar import month_name
-
-from flask import Flask, render_template, request, session, flash, redirect, url_for, make_response
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-#from werkzeug.utils import never_cache
-from email_validator import validate_email, EmailNotValidError
-from datetime import datetime, timedelta
+import os
 import random
 import smtplib
-import os
+from calendar import month_name
+from datetime import datetime, timedelta
+from functools import wraps
+
 from dotenv import load_dotenv
+from email_validator import EmailNotValidError, validate_email
+from flask import (Flask, flash, make_response, redirect, render_template,
+                   request, session, url_for)
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
+from werkzeug.security import check_password_hash, generate_password_hash
 
-import pymysql
-
-pymysql.install_as_MySQLdb()
+# Handle PyMySQL binding safely if driver is present
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
 
 load_dotenv()
 
 app = Flask(__name__)
 
 app.secret_key = os.environ.get('SECRET_KEY')
+app.config['SESSION_PERMANENT'] = False
 
-app.config['SESSION_PERMANENT'] = False  # Prevent session expiration issues
+# Configure SQLAlchemy Engine
+db_uri = os.getenv('DATABASE_URI', '')
+# Auto-fix legacy postgres:// scheme to postgresql:// if present
+if db_uri.startswith("postgres://"):
+    db_uri = db_uri.replace("postgres://", "postgresql://", 1)
 
-#app.config['SESSION_TYPE'] = 'filesystem'  # Store sessions on the server
-
-# Configure SQLAlchemy for Aiven PostgreSQL
-
-# ✅ CORRECT (Tells SQLAlchemy to use PyMySQL)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-
     'pool_size': 10,
     'max_overflow': 20,
     'pool_recycle': 3600,
@@ -41,8 +45,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
-# New DB Schemas for Python Anywhere MySQL server
-# Create a db for pa db  withe this code as I wnat to connect pa mysql db 
 # Database Models
 class User(db.Model):
     __tablename__ = 'users'
@@ -61,8 +63,8 @@ class UserBudget(db.Model):
     username = db.Column(db.String(100), nullable=False)
     month_name = db.Column(db.String(50), nullable=False)
     monthly_income = db.Column(db.Numeric(10, 2), nullable=False)
-    total_expenses = db.Column(db.Numeric(10, 2))
-    savings = db.Column(db.Numeric(10, 2))
+    total_expenses = db.Column(db.Numeric(10, 2), default=0.0)
+    savings = db.Column(db.Numeric(10, 2), default=0.0)
 
     expenses = db.relationship('Expense', backref='budget', cascade='all, delete-orphan')
 
@@ -81,60 +83,13 @@ class Expense(db.Model):
     expense_category = db.Column(db.String(100), nullable=False)
     expense_amount = db.Column(db.Numeric(10, 2), nullable=False)
 
-"""# Database Models
-class User(db.Model):
-    __tablename__ = 'users'
-    __table_args__ = {'schema': 'auth_schema'}
-
-    user_id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class UserBudget(db.Model):
-    __tablename__ = 'users_budget'
-    __table_args__ = (
-        db.UniqueConstraint('username', 'month_name', name='unique_user_month'),
-        {'schema': 'budget_schema'}
-    )
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False)
-    username = db.Column(db.String(100), nullable=False)
-    month_name = db.Column(db.String(50), nullable=False)
-    monthly_income = db.Column(db.Numeric(10, 2), nullable=False)
-    total_expenses = db.Column(db.Numeric(10, 2))
-    savings = db.Column(db.Numeric(10, 2))
-
-    expenses = db.relationship('Expense', backref='budget', cascade='all, delete-orphan')
-
-class Expense(db.Model):
-    __tablename__ = 'expenses'
-    __table_args__ = {'schema': 'budget_schema'}
-
-    id = db.Column(db.Integer, primary_key=True)
-    budget_id = db.Column(
-        db.Integer,
-        db.ForeignKey('budget_schema.users_budget.id', ondelete='CASCADE'),
-    )
-    user_id = db.Column(db.Integer, nullable=False)
-    day_name = db.Column(db.String(20), nullable=False)
-    month_name = db.Column(db.String(50), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    expense_category = db.Column(db.String(100), nullable=False)
-    expense_amount = db.Column(db.Numeric(10, 2), nullable=False)"""
-
-# Create schemas if they don't exist
 with app.app_context():
     db.create_all()
 
-from functools import wraps
 def never_cache(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         response = make_response(f(*args, **kwargs))
-        # Add headers to disable caching
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '-1'
@@ -158,13 +113,15 @@ def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
-    # Correct calculation:
+    try:
+        user_id = int(session['user_id'])
+    except (ValueError, TypeError):
+        session.clear()
+        return redirect(url_for('login'))
+
     expiry_timestamp = session.get('session_expiry', 0)
     current_time = datetime.now().timestamp()
-    remaining_seconds = max(0, int(expiry_timestamp - current_time))  # ← Seconds left
-
-    print(f"Expiry: {expiry_timestamp} | Now: {current_time} | Remaining: {remaining_seconds}s") # Avoid negative values
+    remaining_seconds = max(0, int(expiry_timestamp - current_time))
 
     if current_time > expiry_timestamp:
         session.clear()
@@ -176,53 +133,48 @@ def dashboard():
         session.clear()
         return redirect(url_for('login'))
 
-# 1. Fetch all budgets for the user ordered by newest first
-    budget_query = UserBudget.query.filter_by(username=user.name).order_by(UserBudget.id.desc())
-
-    # 2. Try getting the selected month if it exists in session
+    # Fetch all budgets for the user
+    budget_query = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc())
     selected_month = session.get("selected_month")
     budget = None
 
     if selected_month:
-        budget = budget_query.filter_by(month_name=selected_month).first()
+        budget = budget_query.filter(
+            func.lower(func.trim(UserBudget.month_name)) == selected_month.strip().lower()
+        ).first()
 
-    # 3. Fallback: If no month was selected OR the selected month was deleted,
-    # default to the most recent budget in the database and reset session.
     if not budget:
-        budget = budget_query.first()  # Already ordered by id.desc()
+        budget = budget_query.first()
         if budget:
             session["selected_month"] = budget.month_name
         else:
-            session.pop("selected_month", None)  # No budgets exist at all
+            session.pop("selected_month", None)
 
-    expenses = Expense.query.filter_by(budget_id=budget.id).all()
-    total_expenses = sum(float(exp.expense_amount) for exp in expenses)
-    savings = float(budget.monthly_income) - total_expenses
+    if budget:
+        expenses = Expense.query.filter_by(budget_id=budget.id).all()
+        total_expenses = sum(float(exp.expense_amount) for exp in expenses)
+        savings = float(budget.monthly_income) - total_expenses
 
-    budget_result = {
-        "month_name": budget.month_name,
-        "monthly_income": float(budget.monthly_income),
-        "total_expenses": total_expenses,
-        "savings": savings,
-        "expenses": [{
-            "id": exp.id,  # <--- THIS WAS MISSING!
-            "category": exp.expense_category,
-            "amount": float(exp.expense_amount),
-            "dayname": exp.day_name,
-            "date": exp.date
-        } for exp in expenses]
-    }
-    
-    response = make_response(
-               render_template("Index.html", 
-               username=user.name,
-               budget_result=budget_result, 
-               remaining_time=remaining_seconds)
-            )
-    return response
+        budget_result = {
+            "month_name": budget.month_name,
+            "monthly_income": float(budget.monthly_income),
+            "total_expenses": total_expenses,
+            "savings": savings,
+            "expenses": [{
+                "id": exp.id,
+                "category": exp.expense_category,
+                "amount": float(exp.expense_amount),
+                "dayname": exp.day_name,
+                "date": exp.date
+            } for exp in expenses]
+        }
+    else:
+        budget_result = None
 
-from flask import render_template, request, redirect, url_for, flash, session, make_response
-from datetime import datetime
+    return render_template("Index.html", 
+                           username=user.name,
+                           budget_result=budget_result, 
+                           remaining_time=remaining_seconds)
 
 @app.route("/all-budgets", methods=["GET"])
 @never_cache
@@ -231,23 +183,31 @@ def all_budgets():
         flash('Session expired! Please login again', 'error')
         return redirect(url_for('login'))
 
-    username = session.get('username')
-    user_id = int(session['user_id']) # Ensure integer type
+    try:
+        user_id = int(session['user_id'])
+    except (ValueError, TypeError):
+        session.clear()
+        return redirect(url_for('login'))
 
-    # ... [Keep your session expiry check code here] ...
+    username = session.get('username')
+    expiry_time = session.get('session_expiry', 0)
+    current_time = datetime.now().timestamp()
+
+    if current_time > expiry_time:
+        session.clear()
+        flash('Session time expired! Please login again', 'error')
+        return redirect(url_for('login'))
 
     try:
-        all_budgets = UserBudget.query.filter_by(username=username).order_by(UserBudget.id.desc()).all()
+        all_user_budgets = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc()).all()
 
-        if not all_budgets:
+        if not all_user_budgets:
             flash("No budget data found! Please add a month first.", "error")
             return render_template("Allbudgets.html", username=username, budgets=[])
 
         budget_data = []
 
-        for budget in all_budgets:
-            # FIX: Query expenses by budget_id directly. 
-            # Avoid filtering by user_id here to prevent DB type casting mismatches.
+        for budget in all_user_budgets:
             expenses = Expense.query.filter_by(budget_id=budget.id).all()
 
             expense_items = []
@@ -291,143 +251,83 @@ def all_budgets():
             })
 
         response = make_response(render_template("Allbudgets.html", username=username, budgets=budget_data, now=datetime.now()))
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
         return response
 
     except Exception as e:
         flash(f"Error retrieving budget data: {str(e)}", "error")
         return render_template("Allbudgets.html", username=username, budgets=[])
 
-"""@app.route("/all-budgets", methods=["GET"])
-@never_cache
-def all_budgets():
-    if 'user_id' not in session:
-        flash('Session expired! Please login again', 'error')
-        return redirect(url_for('login'))
-
-    username = session.get('username')
-    user_id = session['user_id']
-    expiry_time = session.get('session_expiry', 0)
-    current_time = datetime.now().timestamp()
-
-    if current_time > expiry_time:
-        session.clear()
-        flash('Session time expired! Please login again', 'error')
-        return redirect(url_for('login'))
-
-    try:
-        all_budgets = UserBudget.query.filter_by(username=username).order_by(UserBudget.id.desc()).all()
-
-        if not all_budgets:
-            flash("No budget data found! Please add a month first.", "error")
-            return render_template("Allbudgets.html", username=username, budgets=[])
-
-        budget_data = []
-
-        for budget in all_budgets:
-            expenses = Expense.query.filter_by(user_id=user_id, budget_id=budget.id).all()
-
-            expense_items = []
-            total_expenses = 0.0
-
-            for exp in expenses:
-                amount = float(exp.expense_amount)
-                # ADDED: "id": exp.id so template has access to expense primary keys
-                expense_items.append({
-                    "id": exp.id,
-                    "category": exp.expense_category,
-                    "amount": amount,
-                    "day_name": exp.day_name,
-                    "date": exp.date
-                })
-                total_expenses += amount
-
-            savings = float(budget.monthly_income) - total_expenses
-
-            expense_percentages = []
-            if float(budget.monthly_income) > 0:
-                expense_percentages = [
-                    {
-                        "category": item["category"],
-                        "percentage": round((item["amount"] / float(budget.monthly_income)) * 100, 2)
-                    }
-                    for item in expense_items
-                ]
-
-            budget_data.append({
-                "id": budget.id,
-                "month_name": budget.month_name,
-                "monthly_income": float(budget.monthly_income),
-                "total_expenses": total_expenses,
-                "savings": savings,
-                "savings_percentage": round((savings / float(budget.monthly_income)) * 100, 2) if float(budget.monthly_income) > 0 else 0,
-                "expenses": expense_items,
-                "expense_percentages": expense_percentages
-            })
-
-        response = make_response(render_template("Allbudgets.html", username=username, budgets=budget_data, now=datetime.now()))
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        return response
-    
-    except Exception as e:
-        flash(f"Error retrieving budget data: {str(e)}", "error")
-        return render_template("Allbudgets.html", username=username, budgets=[])"""
-
 @app.route('/add_month', methods=['POST'])
 def add_month():
     if 'user_id' not in session:
-        flash('You must login to do this task!','error')
+        flash('You must login to do this task!', 'error')
         return redirect(url_for('login'))
-    
-    if request.method == "POST":
-        username = session.get('username')
-        user_id = session.get('user_id')
-        date = request.form.get("date").strip()
-        monthly_income = request.form.get("income").strip()
 
-        if not(date or monthly_income):
-            flash('All fields are required!', 'error')
-            return redirect(url_for('dashboard'))
-        
-        if float(monthly_income) <= 0.0:
+    username = session.get('username')
+    try:
+        user_id = int(session.get('user_id'))
+    except (ValueError, TypeError):
+        flash('Session invalid. Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    date = request.form.get("date", "").strip()
+    raw_income = request.form.get("income", "").strip()
+
+    if not date or not raw_income:
+        flash('All fields are required!', 'error')
+        return redirect(url_for('dashboard'))
+
+    try:
+        monthly_income = float(raw_income)
+        if monthly_income <= 0.0:
             flash('Monthly income must be positive!', 'error')
             return redirect(url_for('dashboard'))
-    
-        month_map = {
-            '01': 'January', '02': 'February', '03': 'March', '04': 'April', '05': 'May', '06': 'June',
-            '07': 'July', '08': 'August', '09': 'September', '10': 'October', '11': 'November','12': 'December'
-        }
+    except ValueError:
+        flash('Invalid income amount!', 'error')
+        return redirect(url_for('dashboard'))
 
-        month = str(date[5:7]) 
-        month_name = month_map[month]
+    try:
+        date_obj = datetime.strptime(date, "%Y-%m-%d")
+        month_name = date_obj.strftime("%B").strip()
+    except ValueError:
+        flash("Invalid date format!", 'error')
+        return redirect(url_for('dashboard'))
 
-        try:
-            session["selected_month"] = month_name  
+    try:
+        session["selected_month"] = month_name  
 
-            user_budget = UserBudget.query.filter_by(user_id=user_id, username=username, month_name=month_name).first()
+        user_budget = UserBudget.query.filter(
+            UserBudget.user_id == user_id,
+            func.lower(func.trim(UserBudget.month_name)) == month_name.lower()
+        ).first()
 
-            if user_budget:
-                user_budget.monthly_income = monthly_income
-                db.session.commit() 
-                flash('Month & Monthly income updated successfully!','success')
-            else:
-                new_budget = UserBudget(user_id=user_id, username=username, month_name=month_name, monthly_income=monthly_income)
-                db.session.add(new_budget)
-                db.session.commit()
-                flash('Month & Monthly income added successfully!','success')
-                
-            return redirect(url_for('dashboard'))
+        if user_budget:
+            user_budget.monthly_income = monthly_income
+            expenses = Expense.query.filter_by(budget_id=user_budget.id).all()
+            total_exp = sum(float(exp.expense_amount) for exp in expenses)
+            user_budget.total_expenses = total_exp
+            user_budget.savings = monthly_income - total_exp
+            db.session.commit() 
+            flash('Month & Monthly income updated successfully!', 'success')
+        else:
+            new_budget = UserBudget(
+                user_id=user_id, 
+                username=username or '', 
+                month_name=month_name, 
+                monthly_income=monthly_income,
+                total_expenses=0.0,
+                savings=monthly_income
+            )
+            db.session.add(new_budget)
+            db.session.commit()
+            flash('Month & Monthly income added successfully!', 'success')
+            
+        return redirect(url_for('dashboard'))
 
-        except ValueError:
-            flash("Invalid input! please try again.", 'error')
-            return redirect(url_for('dashboard'))  # Redirect on error
-
-from datetime import datetime
-from flask import session, flash, redirect, url_for, request
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Database error: {str(e)}", 'error')
+        return redirect(url_for('dashboard'))
 
 @app.route('/edit_expense', methods=['POST'])
 def edit_expense():
@@ -457,7 +357,6 @@ def edit_expense():
     try:
         expense = db.session.get(Expense, int(expense_id)) if expense_id else None
 
-        # Fixed Integer type cast for MySQL compatibility
         if expense and int(expense.user_id) == int(user_id):
             if expense.expense_category == raw_category and float(expense.expense_amount) == new_amount:
                 flash('No changes were made to the expense.', 'info')
@@ -466,12 +365,11 @@ def edit_expense():
                 expense.expense_amount = new_amount
                 db.session.commit()
 
-                # Recalculate parent budget totals
                 budget = UserBudget.query.get(expense.budget_id)
                 if budget:
                     expenses = Expense.query.filter_by(budget_id=budget.id).all()
                     budget.total_expenses = sum(float(exp.expense_amount) for exp in expenses)
-                    budget.savings = float(budget.monthly_income) - budget.total_expenses
+                    budget.savings = float(budget.monthly_income) - float(budget.total_expenses)
                     db.session.commit()
 
                 flash('Expense updated successfully!', 'success')
@@ -484,7 +382,6 @@ def edit_expense():
 
     return redirect(url_for(target_page))
 
-
 @app.route('/edit_income', methods=['POST'])
 def edit_income():
     if 'user_id' not in session:
@@ -496,6 +393,10 @@ def edit_income():
     month_name = request.form.get('month_name', '').strip()
     raw_income = request.form.get('new_income', '').strip()
 
+    if not month_name or not raw_income:
+        flash("Missing month or income value.", 'error')
+        return redirect(url_for(target_page))
+
     try:
         new_income = float(raw_income)
         if new_income < 0:
@@ -506,14 +407,20 @@ def edit_income():
         return redirect(url_for(target_page))
 
     try:
-        # Cast user_id to int for strict MySQL query matching
-        budget = UserBudget.query.filter_by(user_id=int(user_id), month_name=month_name).first()
+        budget = UserBudget.query.filter(
+            UserBudget.user_id == int(user_id),
+            func.lower(func.trim(UserBudget.month_name)) == month_name.lower()
+        ).first()
+
         if budget:
             if float(budget.monthly_income) == new_income:
                 flash('No changes were made to monthly income.', 'info')
             else:
                 budget.monthly_income = new_income
-                budget.savings = new_income - float(budget.total_expenses or 0)
+                expenses = Expense.query.filter_by(budget_id=budget.id).all()
+                total_exp = sum(float(exp.expense_amount) for exp in expenses)
+                budget.total_expenses = total_exp
+                budget.savings = new_income - total_exp
                 db.session.commit()
                 flash('Monthly income updated successfully!', 'success')
         else:
@@ -521,10 +428,9 @@ def edit_income():
 
     except Exception as e:
         db.session.rollback()
-        flash('Failed to update income. Please try again.', 'error')
+        flash(f'Failed to update income: {str(e)}', 'error')
 
     return redirect(url_for(target_page))
-
 
 @app.route('/add_data', methods=['POST'])
 def add_data():
@@ -539,14 +445,10 @@ def add_data():
         date_str = request.form.get('exp_date', '').strip()
         exp_category = request.form.get('exp_category', '').strip()
         exp_amount = request.form.get('exp_amount', '').strip()
-        user_id = session.get('user_id')
+        user_id = int(session.get('user_id'))
 
         if not all([date_str, exp_category, exp_amount]):
             flash('All fields are required!', 'error')
-            return redirect(url_for(target_page))
-
-        if not exp_category.replace(" ", "").isalpha():
-            flash('Expense category must contain only letters and spaces!', 'error')
             return redirect(url_for(target_page))
 
         try:
@@ -567,13 +469,14 @@ def add_data():
             return redirect(url_for(target_page))
 
         target_month_name = request.form.get('month_name', '').strip()
-
-        if target_month_name and target_month_name != month_name:
+        if target_month_name and target_month_name.lower() != month_name.lower():
             flash(f"Date error: You selected a date in {month_name}, but you are adding an expense inside the {target_month_name} block!", "error")
             return redirect(url_for(target_page))
 
-        # Query budget with int user_id cast
-        budget = UserBudget.query.filter_by(user_id=int(user_id), month_name=month_name).first()
+        budget = UserBudget.query.filter(
+            UserBudget.user_id == user_id,
+            func.lower(func.trim(UserBudget.month_name)) == month_name.lower()
+        ).first()
 
         if not budget:
             msg = (
@@ -585,18 +488,17 @@ def add_data():
             return redirect(url_for(target_page))
 
         new_expense = Expense(
-            user_id=int(user_id),
+            user_id=user_id,
             budget_id=budget.id,
             day_name=day_name,
             month_name=month_name,
-            date=date_obj.date(),  # Pass Python date object to db.Date column
+            date=date_obj.date(),
             expense_category=exp_category,
             expense_amount=exp_amount
         )
         db.session.add(new_expense)
         db.session.commit()
 
-        # Recalculate Totals
         expenses = Expense.query.filter_by(budget_id=budget.id).all()
         total_expenses = sum(float(exp.expense_amount) for exp in expenses)
         savings = float(budget.monthly_income) - total_expenses
@@ -613,7 +515,6 @@ def add_data():
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", 'error')
         return redirect(url_for(target_page))
-
 
 @app.route('/delete_expense', methods=['POST'])
 def delete_expense():
@@ -635,19 +536,17 @@ def delete_expense():
         if expense:
             owner_id = getattr(expense, 'user_id', None) or (expense.budget.user_id if expense.budget else None)
             
-            # Integer cast comparison to fix MySQL type mismatch
             if owner_id is not None and int(owner_id) == int(user_id):
                 budget_id = expense.budget_id
                 
                 db.session.delete(expense)
                 db.session.commit()
 
-                # Recalculate parent budget totals after deletion
                 budget = UserBudget.query.get(budget_id)
                 if budget:
                     expenses = Expense.query.filter_by(budget_id=budget.id).all()
                     budget.total_expenses = sum(float(exp.expense_amount) for exp in expenses)
-                    budget.savings = float(budget.monthly_income) - budget.total_expenses
+                    budget.savings = float(budget.monthly_income) - float(budget.total_expenses)
                     db.session.commit()
 
                 flash('Expense item deleted successfully!', 'success')
@@ -661,95 +560,6 @@ def delete_expense():
         flash('Failed to remove expense.', 'error')
 
     return redirect(url_for(target_page))
-
-"""@app.route('/edit_income', methods=['POST'])
-def edit_income():
-    if 'user_id' not in session:
-        flash("Please log in to make changes.", 'error')
-        return redirect(url_for('login'))
-
-    user_id = session.get('user_id')
-    target_page = request.form.get('target_page', 'dashboard').strip()
-    month_name = request.form.get('month_name')
-    raw_income = request.form.get('new_income').strip()
-
-    if not raw_income or float(raw_income) < 0:
-        flash("Please enter a valid income amount.", 'error')
-        return redirect(url_for(target_page))
-
-    try:
-        new_income = float(raw_income)
-    except ValueError:
-        flash("Invalid income value entered.", 'error')
-        return redirect(url_for(target_page))
-
-    try:
-        budget = UserBudget.query.filter_by(user_id=user_id, month_name=month_name).first()
-        if budget:
-            if budget.monthly_income == new_income:
-                flash('No changes were made to monthly income.', 'info')
-            else:
-                budget.monthly_income = new_income
-                db.session.commit()
-                flash('Monthly income updated successfully!', 'success')
-        else:
-            flash('Budget record not found.', 'error')
-
-    except Exception:
-        db.session.rollback()
-        flash('Failed to update income. Please try again.', 'error')
-
-    return redirect(url_for(target_page))
-
-@app.route('/edit_expense', methods=['POST'])
-def edit_expense():
-    if 'user_id' not in session:
-        flash("Please log in to make changes.", 'error')
-        return redirect(url_for('login'))
-
-    user_id = session.get('user_id')
-    expense_id = request.form.get('expense_id')
-    raw_category = request.form.get('category').strip()
-    raw_amount = request.form.get('amount').strip()
-    target_page = request.form.get('target_page', 'dashboard').strip()
-
-    if not raw_category or not raw_amount:
-        flash("Please enter both category and expense amount.", 'error')
-        return redirect(url_for(target_page))
-
-    if not raw_amount or float(raw_amount) < 0:
-        flash("Please enter a valid expense amount.", 'error')
-        return redirect(url_for(target_page))
-
-    try:
-        new_amount = float(raw_amount)
-    except ValueError:
-        flash("Invalid expense amount entered.", 'error')
-        return redirect(url_for(target_page))
-
-    new_category = raw_category.strip()
-
-    try:
-        expense = db.session.get(Expense, int(expense_id)) if expense_id else None
-
-        if expense and str(expense.user_id) == str(user_id):            
-            if expense.expense_category == new_category and float(expense.expense_amount) == new_amount:
-                flash('No changes were made to the expense.', 'info')
-            else:
-                expense.expense_category = new_category
-                expense.expense_amount = new_amount
-                db.session.commit()
-                flash('Expense updated successfully!', 'success')
-        else:
-            flash('Expense record not found.', 'error')
-
-    except Exception as e:
-        db.session.rollback()
-        flash('Failed to update expense. Please try again.', 'error')
-
-    # UPDATED: Redirects back to all_budgets page
-    return redirect(url_for(target_page))
-"""
 
 # Weekly Report Email Sending Route
 import os
