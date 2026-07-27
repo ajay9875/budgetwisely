@@ -238,6 +238,7 @@
                                         <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
                                             <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                             <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
+                                            <input type="hidden" name="target_page" value="dashboard">
 
                                             <label style="font-size: 0.85rem; font-weight: 600;">Category:</label>
                                             <input type="text" name="category" value="{{ expense.category }}" required class="inline-input" style="width: 140px;">
