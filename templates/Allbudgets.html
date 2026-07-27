@@ -326,110 +326,135 @@
         <p>&copy; 2026 Budget Wisely (Monthly Budget Calculator). All Rights Reserved.</p>
     </footer>
 
-    <script>
-        // Inline Toggle Helper
-        function toggleExpenseForm(formId) {
-            const form = document.getElementById(formId);
-            if (form.style.display === "none" || form.style.display === "") {
-                form.style.display = "block";
-            } else {
-                form.style.display = "none";
+<script>
+
+// Inline Toggle Helper
+function toggleExpenseForm(formId) {
+    const form = document.getElementById(formId);
+    if (form.style.display === "none" || form.style.display === "") {
+        form.style.display = "block";
+    } else {
+        form.style.display = "none";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    {% if budgets %}
+    const ctx = document.getElementById("budgetChart").getContext("2d");
+    
+    const monthOrder = {
+        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+        'September': 9, 'October': 10, 'November': 11, 'December': 12
+    };
+    
+    const budgetData = {{ budgets | tojson }};
+    
+    const sortedData = [...budgetData].sort((a, b) => {
+        return monthOrder[a.month_name] - monthOrder[b.month_name];
+    });
+    
+    const months = sortedData.map(budget => budget.month_name);
+    const incomeData = sortedData.map(budget => budget.monthly_income);
+    const expensesData = sortedData.map(budget => budget.total_expenses);
+    const savingsData = sortedData.map(budget => budget.savings);
+
+// Custom Plugin for Darker Solid Separator Lines
+const monthSeparatorPlugin = {
+    id: 'monthSeparator',
+    beforeDraw(chart) {
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        
+        for (let i = 0; i < x.ticks.length - 1; i++) {
+            const currentX = x.getPixelForTick(i);
+            const nextX = x.getPixelForTick(i + 1);
+            const midX = (currentX + nextX) / 2;
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = '#94a3b8'; // Darker grey line matching the image
+            ctx.lineWidth = 1;           // Clean thin line
+            ctx.moveTo(midX, top);
+            ctx.lineTo(midX, bottom);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+};
+
+new Chart(ctx, {
+    type: "bar",
+    data: {
+        labels: months,
+        datasets: [
+            {
+                label: "Income",
+                data: incomeData,
+                backgroundColor: "#4F46E5", // Darker vibrant blue
+                borderColor: "#4338CA",
+                borderWidth: 1,
+                borderRadius: 4
+            },
+            {
+                label: "Expenses",
+                data: expensesData,
+                backgroundColor: "#EF4444", // Solid coral red
+                borderColor: "#DC2626",
+                borderWidth: 1,
+                borderRadius: 4
+            },
+            {
+                label: "Savings",
+                data: savingsData,
+                backgroundColor: savingsData.map(value => 
+                    value < 0 ? "#EF4444" : "#10B981"), // Solid Red if negative, Vibrant Green if positive
+                borderColor: savingsData.map(value => 
+                    value < 0 ? "#DC2626" : "#059669"),
+                borderWidth: 1,
+                borderRadius: 4
+            }
+        ]
+    },
+    plugins: [monthSeparatorPlugin],
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Yearly Financial Trend',
+                font: { size: 18, family: "'Inter', sans-serif", weight: 'bold' },
+                color: '#0f172a'
+            },
+            legend: {
+                labels: {
+                    usePointStyle: false,
+                    boxWidth: 20,
+                    boxHeight: 12,
+                    font: { weight: 'bold' }
+                }
+            }
+        },
+        scales: {
+            y: {
+                grid: { color: '#e2e8f0' },
+                ticks: {
+                    color: '#64748b',
+                    callback: function(value) { return '₹' + value; }
+                }
+            },
+            x: {
+                grid: { display: false },
+                ticks: {
+                    color: '#334155',
+                    font: { weight: '600' }
+                }
             }
         }
-
-        document.addEventListener("DOMContentLoaded", function () {
-            {% if budgets %}
-            const ctx = document.getElementById("budgetChart").getContext("2d");
-            
-            const monthOrder = {
-                'January': 1, 'February': 2, 'March': 3, 'April': 4,
-                'May': 5, 'June': 6, 'July': 7, 'August': 8,
-                'September': 9, 'October': 10, 'November': 11, 'December': 12
-            };
-            
-            const budgetData = {{ budgets | tojson }};
-            
-            const sortedData = [...budgetData].sort((a, b) => {
-                return monthOrder[a.month_name] - monthOrder[b.month_name];
-            });
-            
-            const months = sortedData.map(budget => budget.month_name);
-            const incomeData = sortedData.map(budget => budget.monthly_income);
-            const expensesData = sortedData.map(budget => budget.total_expenses);
-            const savingsData = sortedData.map(budget => budget.savings);
-
-            new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: months,
-                    datasets: [
-                        {
-                            label: "Income",
-                            data: incomeData,
-                            backgroundColor: "rgba(39, 174, 96, 0.75)",
-                            borderColor: "#27ae60",
-                            borderWidth: 1,
-                            borderRadius: 4
-                        },
-                        {
-                            label: "Expenses",
-                            data: expensesData,
-                            backgroundColor: "rgba(231, 76, 60, 0.75)",
-                            borderColor: "#e74c3c",
-                            borderWidth: 1,
-                            borderRadius: 4
-                        },
-                        {
-                            label: "Savings",
-                            data: savingsData,
-                            backgroundColor: savingsData.map(value => 
-                                value < 0 ? "rgba(231, 76, 60, 0.75)" : "rgba(52, 152, 219, 0.75)"),
-                            borderColor: savingsData.map(value => 
-                                value < 0 ? "#e74c3c" : "#3498db"),
-                            borderWidth: 1,
-                            borderRadius: 4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Monthly Financial Trend Overview',
-                            font: { size: 16, family: "'Inter', sans-serif", weight: '600' },
-                            color: '#2c3e50'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) label += ': ';
-                                    label += '₹' + context.raw.toFixed(2);
-                                    return label;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            grid: { color: '#f1f5f9' },
-                            ticks: {
-                                callback: function(value) { return '₹' + value; },
-                                font: { family: "'Inter', sans-serif" }
-                            }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { font: { family: "'Inter', sans-serif" } }
-                        }
-                    }
-                }
-            });
-            {% endif %}
-        });
+    }
+});
+{% endif %}
+});
     </script>
     <script>
     function toggleIncomeForm(formId) {
