@@ -9,6 +9,10 @@ import smtplib
 import os
 from dotenv import load_dotenv
 
+import pymysql
+
+pymysql.install_as_MySQLdb()
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -21,6 +25,7 @@ app.config['SESSION_PERMANENT'] = False  # Prevent session expiration issues
 
 # Configure SQLAlchemy for Aiven PostgreSQL
 
+# ✅ CORRECT (Tells SQLAlchemy to use PyMySQL)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -34,7 +39,53 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
+# New DB Schemas for Python Anywhere MySQL server
+# Create a db for pa db  withe this code as I wnat to connect pa mysql db 
 # Database Models
+class User(db.Model):
+    __tablename__ = 'users'
+    __table_args__ = {'schema': 'auth_schema'}
+
+    user_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class UserBudget(db.Model):
+    __tablename__ = 'users_budget'
+    __table_args__ = (
+        db.UniqueConstraint('username', 'month_name', name='unique_user_month'),
+        {'schema': 'budget_schema'}
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    username = db.Column(db.String(100), nullable=False)
+    month_name = db.Column(db.String(50), nullable=False)
+    monthly_income = db.Column(db.Numeric(10, 2), nullable=False)
+    total_expenses = db.Column(db.Numeric(10, 2))
+    savings = db.Column(db.Numeric(10, 2))
+
+    expenses = db.relationship('Expense', backref='budget', cascade='all, delete-orphan')
+
+class Expense(db.Model):
+    __tablename__ = 'expenses'
+    __table_args__ = {'schema': 'budget_schema'}
+
+    id = db.Column(db.Integer, primary_key=True)
+    budget_id = db.Column(
+    db.Integer,
+    db.ForeignKey('budget_schema.users_budget.id', ondelete='CASCADE'),
+    )
+    user_id = db.Column(db.Integer, nullable=False)
+    day_name = db.Column(db.String(20), nullable=False)
+    month_name = db.Column(db.String(50), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    expense_category = db.Column(db.String(100), nullable=False)
+    expense_amount = db.Column(db.Numeric(10, 2), nullable=False)
+
+"""# Database Models
 class User(db.Model):
     __tablename__ = 'users'
     __table_args__ = {'schema': 'auth_schema'}
@@ -76,7 +127,7 @@ class Expense(db.Model):
     month_name = db.Column(db.String(50), nullable=False)
     date = db.Column(db.Date, nullable=False)
     expense_category = db.Column(db.String(100), nullable=False)
-    expense_amount = db.Column(db.Numeric(10, 2), nullable=False)
+    expense_amount = db.Column(db.Numeric(10, 2), nullable=False)"""
 
 # Create schemas if they don't exist
 with app.app_context():
