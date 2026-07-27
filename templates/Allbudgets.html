@@ -188,7 +188,7 @@
                     </div>
 
                     <!-- Expense Section -->
-                    <div class="expenses">
+                    <div class="expenses" style="margin-bottom: 20px !important;">
                         <div class="expense-header">
                             <strong><i class="fa-solid fa-list-check"></i> Expense Breakdown</strong>
                             <button type="button" class="btn-add-expense" onclick="toggleExpenseForm('form-{{ loop.index }}')">
@@ -306,12 +306,12 @@
                     {% else %}
                     <p style="color: var(--text-muted); font-size: 0.9rem;">No detailed expenses logged yet.</p>
                     {% endif %}
-                </div>
 
                     <p class="small-text"><i class="fa-solid fa-arrows-rotate"></i> Last updated: {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
                 </div>
+                    </div>
+                </div>
             {% endfor %}
-
         {% else %}
             <div class="no-data">
                 <i class="fa-solid fa-folder-open empty-icon"></i>

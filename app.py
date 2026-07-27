@@ -174,14 +174,24 @@ def dashboard():
         session.clear()
         return redirect(url_for('login'))
 
+# 1. Fetch all budgets for the user ordered by newest first
+    budget_query = UserBudget.query.filter_by(username=user.name).order_by(UserBudget.id.desc())
+
+    # 2. Try getting the selected month if it exists in session
     selected_month = session.get("selected_month")
+    budget = None
 
-    budget_query = UserBudget.query.filter_by(username=user.name)
-    budget = (budget_query.filter_by(month_name=selected_month).first() if selected_month
-              else budget_query.order_by(UserBudget.id.desc()).first())
+    if selected_month:
+        budget = budget_query.filter_by(month_name=selected_month).first()
 
+    # 3. Fallback: If no month was selected OR the selected month was deleted,
+    # default to the most recent budget in the database and reset session.
     if not budget:
-        return render_template("Index.html", username=user.name, remaining_time=remaining_seconds, budget_result={})
+        budget = budget_query.first()  # Already ordered by id.desc()
+        if budget:
+            session["selected_month"] = budget.month_name
+        else:
+            session.pop("selected_month", None)  # No budgets exist at all
 
     expenses = Expense.query.filter_by(budget_id=budget.id).all()
     total_expenses = sum(float(exp.expense_amount) for exp in expenses)
@@ -382,6 +392,9 @@ def add_data():
                 '09': 'September', '10': 'October', '11': 'November', '12': 'December'
             }
 
+            # Extract target month from form (if provided by UI card)
+            target_month_name = request.form.get('month_name', '').strip()
+            
             # Validation: Date format parsing
             try:
                 month = date[5:7]
@@ -390,6 +403,11 @@ def add_data():
                 day_name = date_obj.strftime("%A")
             except (IndexError, KeyError, ValueError):
                 flash('Invalid date format! Please use YYYY-MM-DD.', 'error')
+                return redirect(url_for(target_page))
+
+            # Enforce matching month when submitted from a specific month card
+            if target_month_name and target_month_name != month_name:
+                flash(f"Date error: You selected a date in {month_name}, but you are adding an expense inside the {target_month_name} block!", "error")
                 return redirect(url_for(target_page))
 
             # Database Lookup
