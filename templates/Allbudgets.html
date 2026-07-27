@@ -115,6 +115,8 @@
                         
                         <form method="POST" action="/delete_month" class="delete_month" onsubmit="return confirm('Are you sure you want to delete this month?');">
                             <input type="hidden" name="month_name" value="{{ budget.month_name }}">
+                            <input type="hidden" name="target_page" value="all_budgets">
+
                             <button type="submit" class="btn-delete-month" title="Delete Month">
                                 <i class="fa-solid fa-trash-can"></i> Delete Month
                             </button>
@@ -198,6 +200,7 @@
                         <div id="form-{{ loop.index }}" class="add-expense-form-container" style="display: none;">
                             <form method="POST" action="/add_data" class="inline-add-form">
                                 <input type="hidden" name="month_name" value="{{ budget.month_name }}">
+                                <input type="hidden" name="target_page" value="all_budgets">
                                 
                                 <div class="form-inputs">
                                     <div class="input-group">
@@ -236,58 +239,68 @@
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {% for expense in budget.expenses %}
-                                <tr>
-                                    <!-- Category Cell: Houses the main <form> -->
-                                    <td>
-                                        <form id="edit-expense-form-{{ expense.id }}" method="POST" action="/edit_expense" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; align-items: center;">
-                                            <input type="hidden" name="expense_id" value="{{ expense.id }}">
-                                            <input type="hidden" name="month_name" value="{{ budget.month_name }}">
-                                            <!-- REMOVED value attribute so placeholder works -->
-                                            <input type="text" name="category" placeholder="{{ expense.category }}" required class="inline-input">
-                                        </form>
-                                    </td>
+                                <tbody>
+                                    {% for expense in budget.expenses %}
+                                    <!-- 1. Normal Expense Display Row -->
+                                    <tr>
+                                        <td>{{ expense.expense_category if expense.expense_category else expense.category }}</td>
+                                        <td>₹{{ "%.2f"|format(expense.expense_amount if expense.expense_amount else expense.amount) }}</td>
+                                        <td>
+                                            <span class="percentage">
+                                                {{ "%.1f"|format(((expense.expense_amount if expense.expense_amount else expense.amount) / budget.monthly_income) * 100 if budget.monthly_income > 0 else 0) }}% of Income
+                                            </span>
+                                        </td>
+                                        <td style="color: var(--text-muted); font-size: 0.85rem;">
+                                            {{ expense.day_name if expense.day_name else expense.dayname }} {{ expense.date }}
+                                        </td>
+                                        <td>
+                                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                                <!-- Pencil Button: Toggles the inline edit form below -->
+                                                <button type="button" class="icon-btn" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" title="Edit Expense">
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </button>
 
-                                    <!-- Amount Cell: Linked to the form using the 'form' attribute -->
-                                    <td>
-                                        <!-- REMOVED value attribute so placeholder works -->
-                                        <input type="number" name="amount" step="0.01" placeholder="{{ expense.amount }}" required class="inline-input" style="width: 100px;" form="edit-expense-form-{{ expense.id }}">
-                                    </td>
+                                                <!-- Delete Form -->
+                                                <form method="POST" action="/delete_expense" onsubmit="confirmDeleteExpense('{{ expense.id }}', '{{ expense.month_name }}'); return false;" style="display: inline;">
+                                                    <input type="hidden" name="expense_id" value="{{ expense.id }}">
+                                                    <input type="hidden" name="target_page" value="all_budgets">
+                                                    <button type="submit" class="icon-btn" title="Delete Expense">
+                                                        <i class="fa-solid fa-trash-can" style="color: var(--danger);"></i>
+                                                    </button>
+                                                </form>
 
-                                    <!-- Distribution Cell -->
-                                    <td>
-                                        <span class="percentage">
-                                            {{ "%.1f"|format((expense.amount / budget.monthly_income) * 100 if budget.monthly_income > 0 else 0) }}% of Income /
-                                            {{ "%.1f"|format((expense.amount / budget.total_expenses) * 100 if budget.total_expenses > 0 else 0) }}% of Expenses
-                                        </span>
-                                    </td>
+                                            </div>
+                                        </td>
+                                    </tr>
 
-                                    <!-- Date Cell -->
-                                    <td style="color: var(--text-muted); font-size: 0.85rem;">
-                                        {{ expense.dayname }} {{ expense.date }}
-                                    </td>
-
-                                    <!-- Actions Cell -->
-                                    <td>
-                                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                            <!-- Primary Update button in same style as Income edit button -->
-                                            <button type="submit" class="icon-btn" form="edit-expense-form-{{ expense.id }}">
-                                                <i class="fa-solid fa-pen"></i>
-                                            </button>
-
-                                            <!-- Delete Expense Form -->
-                                            <form method="POST" action="/delete_expense" onsubmit="return confirm('Are you sure you want to delete this expense?');" style="display: inline;">
+                                    <!-- 2. Hidden Inline Edit Form Row (Opens directly below on pencil click) -->
+                                    <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
+                                        <td colspan="5">
+                                            <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
+                                                <!-- Hidden Expense ID -->
                                                 <input type="hidden" name="expense_id" value="{{ expense.id }}">
-                                                <button type="submit" class="icon-btn" title="Delete Expense">
-                                                    <i class="fa-solid fa-trash-can" style="color: var(--danger);"></i>
+                                                <input type="hidden" name="target_page" value="all_budgets">
+
+                                                <!-- Category Field -->
+                                                <label style="font-size: 0.85rem; font-weight: 600;">Category:</label>
+                                                <input type="text" name="category" value="{{ expense.expense_category if expense.expense_category else expense.category }}" required class="inline-input" style="width: 140px;">
+
+                                                <!-- Amount Field -->
+                                                <label style="font-size: 0.85rem; font-weight: 600;">Amount (₹):</label>
+                                                <input type="number" step="0.01" name="amount" value="{{ expense.expense_amount if expense.expense_amount else expense.amount }}" required class="inline-input" style="width: 100px;">
+
+                                                <!-- Actions -->
+                                                <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;">
+                                                    <i class="fa-solid fa-check"></i> Save
+                                                </button>
+                                                <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;">
+                                                    <i class="fa-solid fa-xmark"></i>
                                                 </button>
                                             </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
                         </table>
                     </div>
                     {% else %}
