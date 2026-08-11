@@ -576,6 +576,13 @@ from collections import defaultdict
 from urllib.parse import quote
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import os
+import smtplib
+from collections import defaultdict
+from datetime import datetime
+from urllib.parse import quote
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 def send_weekly_budget_reports():
     sender_email = os.getenv('SENDER_EMAIL')
@@ -599,8 +606,11 @@ def send_weekly_budget_reports():
 
             for user in users:
                 try:
-                    # 1. Fetch current month data
-                    current_month_name = datetime.now().strftime("%B")  # e.g., "July"
+                    # 1. Fetch current month data and formatted date
+                    now = datetime.now()
+                    current_month_name = now.strftime("%B")   # e.g., "August"
+                    formatted_date = now.strftime("%b %d")    # e.g., "Aug 11"
+
                     budget = UserBudget.query.filter_by(
                         user_id=user.user_id, 
                         month_name=current_month_name
@@ -611,94 +621,149 @@ def send_weekly_budget_reports():
                         month_name=current_month_name
                     ).order_by(Expense.date.desc()).all()
 
-                    # Skip if no budget setup and no expenses logged
-                    if not budget and not expenses:
-                        print(f"⏩ Skipped {user.email}: No records for {current_month_name}.")
-                        continue
+                    monthly_income = float(budget.monthly_income) if (budget and budget.monthly_income) else 0.00
 
-                    # 2. Financial Calculations
-                    monthly_income = float(budget.monthly_income) if budget else 0.00
-                    total_expenses = sum(float(e.expense_amount) for e in expenses)
-                    net_savings = monthly_income - total_expenses
-                    
-                    savings_percent = round((net_savings / monthly_income) * 100, 1) if monthly_income > 0 else 0
-                    expense_percent = round((total_expenses / monthly_income) * 100, 1) if monthly_income > 0 else 0
-                    savings_color = "#27ae60" if net_savings >= 0 else "#e74c3c"
-
-                    # 3. Aggregate Expenses by Category for Chart
-                    cat_totals = defaultdict(float)
-                    for exp in expenses:
-                        cat_totals[exp.expense_category] += float(exp.expense_amount)
-
-                    # Build QuickChart API Donut Chart URL
-                    chart_html = ""
-                    if cat_totals:
-                        cat_labels = list(cat_totals.keys())[:5]
-                        cat_values = [round(cat_totals[k], 2) for k in cat_labels]
-                        
-                        chart_config = f"""{{
-                            type: 'doughnut',
-                            data: {{
-                                labels: {cat_labels},
-                                datasets: [{{
-                                    data: {cat_values},
-                                    backgroundColor: ['#27ae60', '#3498db', '#e74c3c', '#f1c40f', '#9b59b6']
-                                }}]
-                            }},
-                            options: {{
-                                plugins: {{
-                                    legend: {{ position: 'bottom', labels: {{ color: '#94a3b8', font: {{ size: 10 }} }} }},
-                                    title: {{ display: true, text: 'Expense Breakdown by Category', color: '#ffffff', font: {{ size: 12 }} }}
-                                }}
-                            }}
-                        }}"""
-                        
-                        encoded_config = quote(chart_config.replace('\n', '').replace(' ', ''))
-                        chart_url = f"https://quickchart.io/chart?c={encoded_config}&w=450&h=220&bkg=transparent"
-                        
-                        chart_html = f"""
-                        <div style="text-align: center; margin: 20px 0; background-color: #0f172a; padding: 15px; border-radius: 12px; border: 1px solid #334155;">
-                            <img src="{chart_url}" alt="Expense Breakdown Chart" style="max-width: 100%; height: auto; border: 0;" />
+                    # 2. Build inner content based on budget existence
+                    if monthly_income <= 0:
+                        # --- NO BUDGET SET CONTENT ---
+                        main_content_html = f"""
+                        <div style="background-color: #0f172a; border: 1px dashed #f59e0b; border-radius: 12px; padding: 24px; text-align: center; margin: 20px 0;">
+                            <p style="margin: 0 0 8px 0; font-size: 15px; color: #fbbf24; font-weight: 700;">
+                                ⚠️ No Monthly Budget Set for {current_month_name}
+                            </p>
+                            <p style="margin: 0 0 18px 0; font-size: 13px; color: #94a3b8; line-height: 1.5;">
+                                You haven't configured your budget for this month yet. Add your monthly income now to start logging expenses and tracking your financial goals!
+                            </p>
+                            <a href="{app_url}" style="background-color: #f59e0b; color: #0f172a; padding: 10px 22px; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: bold; display: inline-block;">
+                                Set Monthly Budget
+                            </a>
                         </div>
-                        """
-
-                    # 4. Generate Expense Table Rows
-                    if expenses:
-                        expense_rows = ""
-                        for exp in expenses[:6]:
-                            expense_rows += f"""
-                            <tr>
-                                <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #f8fafc;">{exp.expense_category}</td>
-                                <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8;">{exp.date}</td>
-                                <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #f87171; font-weight: bold; text-align: right;">₹{float(exp.expense_amount):,.2f}</td>
-                            </tr>
-                            """
-                        
-                        expense_table_html = f"""
-                        <h4 style="color: #4ade80; font-size: 12px; font-weight: 800; letter-spacing: 1px; margin: 24px 0 10px 0; text-transform: uppercase;">
-                            📋 Recent Transactions ({len(expenses)})
-                        </h4>
-                        <table style="width: 100%; border-collapse: collapse; background-color: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid #334155;" cellpadding="0" cellspacing="0">
-                            <thead>
-                                <tr style="background-color: #1e293b; text-align: left;">
-                                    <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase;">Category</th>
-                                    <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase;">Date</th>
-                                    <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase; text-align: right;">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {expense_rows}
-                            </tbody>
-                        </table>
                         """
                     else:
-                        expense_table_html = """
-                        <div style="text-align: center; padding: 18px; background-color: #0f172a; border-radius: 12px; margin-top: 15px; border: 1px dashed #334155;">
-                            <p style="margin: 0; font-size: 13px; color: #94a3b8;">🎉 No expenses logged for this month yet!</p>
+                        # --- FULL REPORT CONTENT ---
+                        total_expenses = sum(float(e.expense_amount) for e in expenses)
+                        net_savings = monthly_income - total_expenses
+                        
+                        savings_percent = round((net_savings / monthly_income) * 100, 1)
+                        expense_percent = round((total_expenses / monthly_income) * 100, 1)
+                        savings_color = "#27ae60" if net_savings >= 0 else "#e74c3c"
+
+                        # Aggregate Expenses by Category
+                        cat_totals = defaultdict(float)
+                        for exp in expenses:
+                            cat_totals[exp.expense_category] += float(exp.expense_amount)
+
+                        chart_html = ""
+                        if cat_totals:
+                            cat_labels = list(cat_totals.keys())[:5]
+                            cat_values = [round(cat_totals[k], 2) for k in cat_labels]
+                            
+                            chart_config = f"""{{
+                                type: 'doughnut',
+                                data: {{
+                                    labels: {cat_labels},
+                                    datasets: [{{
+                                        data: {cat_values},
+                                        backgroundColor: ['#27ae60', '#3498db', '#e74c3c', '#f1c40f', '#9b59b6']
+                                    }}]
+                                }},
+                                options: {{
+                                    plugins: {{
+                                        legend: {{ position: 'bottom', labels: {{ color: '#94a3b8', font: {{ size: 10 }} }} }},
+                                        title: {{ display: true, text: 'Expense Breakdown by Category', color: '#ffffff', font: {{ size: 12 }} }}
+                                    }}
+                                }}
+                            }}"""
+                            
+                            encoded_config = quote(chart_config.replace('\n', '').replace(' ', ''))
+                            chart_url = f"https://quickchart.io/chart?c={encoded_config}&w=450&h=220&bkg=transparent"
+                            
+                            chart_html = f"""
+                            <div style="text-align: center; margin: 20px 0; background-color: #0f172a; padding: 15px; border-radius: 12px; border: 1px solid #334155;">
+                                <img src="{chart_url}" alt="Expense Breakdown Chart" style="max-width: 100%; height: auto; border: 0;" />
+                            </div>
+                            """
+
+                        # Recent Transactions Table
+                        if expenses:
+                            expense_rows = ""
+                            for exp in expenses[:6]:
+                                expense_rows += f"""
+                                <tr>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #f8fafc;">{exp.expense_category}</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8;">{exp.date}</td>
+                                    <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #f87171; font-weight: bold; text-align: right;">₹{float(exp.expense_amount):,.2f}</td>
+                                </tr>
+                                """
+                            
+                            expense_table_html = f"""
+                            <h4 style="color: #4ade80; font-size: 12px; font-weight: 800; letter-spacing: 1px; margin: 24px 0 10px 0; text-transform: uppercase;">
+                                📋 Recent Transactions ({len(expenses)})
+                            </h4>
+                            <table style="width: 100%; border-collapse: collapse; background-color: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid #334155;" cellpadding="0" cellspacing="0">
+                                <thead>
+                                    <tr style="background-color: #1e293b; text-align: left;">
+                                        <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase;">Category</th>
+                                        <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase;">Date</th>
+                                        <th style="padding: 10px 12px; font-size: 11px; color: #94a3b8; text-transform: uppercase; text-align: right;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {expense_rows}
+                                </tbody>
+                            </table>
+                            """
+                        else:
+                            expense_table_html = """
+                            <div style="text-align: center; padding: 18px; background-color: #0f172a; border-radius: 12px; margin-top: 15px; border: 1px dashed #334155;">
+                                <p style="margin: 0; font-size: 13px; color: #94a3b8;">🎉 No expenses logged for this month yet!</p>
+                            </div>
+                            """
+
+                        # Combine Full Report View
+                        main_content_html = f"""
+                        <!-- Metric Cards -->
+                        <table style="width: 100%; border-collapse: separate; border-spacing: 6px; margin-bottom: 20px;" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
+                                    <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">INCOME</div>
+                                    <div style="font-size: 14px; font-weight: bold; color: #4ade80;">₹{monthly_income:,.2f}</div>
+                                </td>
+                                <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
+                                    <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">EXPENSES</div>
+                                    <div style="font-size: 14px; font-weight: bold; color: #f87171;">₹{total_expenses:,.2f}</div>
+                                    <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">({expense_percent}%)</div>
+                                </td>
+                                <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
+                                    <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">SAVINGS</div>
+                                    <div style="font-size: 14px; font-weight: bold; color: {savings_color};">₹{net_savings:,.2f}</div>
+                                    <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">({savings_percent}%)</div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Progress Bar -->
+                        <div style="margin-bottom: 20px; background-color: #0f172a; padding: 12px; border-radius: 10px; border: 1px solid #334155;">
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 6px;">
+                                <span>Budget Spent</span>
+                                <span style="font-weight: bold; color: #ffffff;">{expense_percent}%</span>
+                            </div>
+                            <div style="background-color: #334155; border-radius: 6px; height: 8px; overflow: hidden;">
+                                <div style="background-color: {'#f87171' if expense_percent > 90 else '#4ade80'}; width: {min(expense_percent, 100)}%; height: 8px; border-radius: 6px;"></div>
+                            </div>
+                        </div>
+
+                        {chart_html}
+                        {expense_table_html}
+
+                        <div style="text-align: center; margin-top: 28px;">
+                            <a href="{app_url}" style="background-color: #22c55e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: bold; display: inline-block; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);">
+                                Control Your Budget
+                            </a>
                         </div>
                         """
 
-                    # 5. Build Standardized HTML Email Layout
+                    # 3. Outer Master HTML Wrapper
                     html_body = f"""
                     <!DOCTYPE html>
                     <html lang="en">
@@ -707,94 +772,44 @@ def send_weekly_budget_reports():
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
                     <body style="margin: 0; padding: 0; background-color: #0b1120; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                        
-                        <!-- Outer Outer Table Wrapper to force Top & Bottom Margins on Mobile & Web Gmail -->
                         <table style="width: 100%; background-color: #0b1120; margin: 0; padding: 40px 10px;" cellpadding="0" cellspacing="0" border="0">
                             <tr>
                                 <td align="center">
-                                    
-                                    <!-- Central Email Card -->
                                     <table style="max-width: 540px; width: 100%; background-color: #1e293b; border-radius: 16px; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);" cellpadding="0" cellspacing="0" border="0">
                                         <tr>
                                             <td style="padding: 32px 24px;">
-                                                
-                                                <!-- Header -->
                                                 <div style="text-align: center; margin-bottom: 24px;">
                                                     <h1 style="margin: 0; font-size: 24px; color: #ffffff; font-weight: 800; letter-spacing: -0.5px;">💰 Budget Wisely</h1>
                                                     <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">Weekly Financial Digest • {current_month_name}</p>
                                                 </div>
 
                                                 <p style="font-size: 14px; color: #e2e8f0; margin-bottom: 20px; line-height: 1.5;">
-                                                    Hi <strong>{user.name}</strong>, here is your real-time financial report for {current_month_name}:
+                                                    Hi <strong>{user.name}</strong>, here is your financial summary for {current_month_name}:
                                                 </p>
 
-                                                <!-- Metric Cards -->
-                                                <table style="width: 100%; border-collapse: separate; border-spacing: 6px; margin-bottom: 20px;" cellpadding="0" cellspacing="0">
-                                                    <tr>
-                                                        <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
-                                                            <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">INCOME</div>
-                                                            <div style="font-size: 14px; font-weight: bold; color: #4ade80;">₹{monthly_income:,.2f}</div>
-                                                        </td>
-                                                        <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
-                                                            <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">EXPENSES</div>
-                                                            <div style="font-size: 14px; font-weight: bold; color: #f87171;">₹{total_expenses:,.2f}</div>
-                                                            <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">({expense_percent}%)</div>
-                                                        </td>
-                                                        <td style="width: 33%; background-color: #0f172a; padding: 12px 8px; border-radius: 10px; border: 1px solid #334155; text-align: center;">
-                                                            <div style="color: #94a3b8; font-size: 10px; font-weight: 700; margin-bottom: 4px;">SAVINGS</div>
-                                                            <div style="font-size: 14px; font-weight: bold; color: {savings_color};">₹{net_savings:,.2f}</div>
-                                                            <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">({savings_percent}%)</div>
-                                                        </td>
-                                                    </tr>
-                                                </table>
+                                                <!-- Dynamic Content Insertion -->
+                                                {main_content_html}
 
-                                                <!-- Progress Bar -->
-                                                <div style="margin-bottom: 20px; background-color: #0f172a; padding: 12px; border-radius: 10px; border: 1px solid #334155;">
-                                                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 6px;">
-                                                        <span>Budget Spent</span>
-                                                        <span style="font-weight: bold; color: #ffffff;">{expense_percent}%</span>
-                                                    </div>
-                                                    <div style="background-color: #334155; border-radius: 6px; height: 8px; overflow: hidden;">
-                                                        <div style="background-color: {'#f87171' if expense_percent > 90 else '#4ade80'}; width: {min(expense_percent, 100)}%; height: 8px; border-radius: 6px;"></div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Category Breakdown Chart -->
-                                                {chart_html}
-
-                                                <!-- Expense Table -->
-                                                {expense_table_html}
-
-                                                <!-- Button CTA -->
-                                                <div style="text-align: center; margin-top: 28px;">
-                                                    <a href="{app_url}" style="background-color: #22c55e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: bold; display: inline-block; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);">
-                                                        Control Your Budget
-                                                    </a>
-                                                </div>
-
-                                                <!-- Footer -->
                                                 <div style="height: 1px; background-color: #334155; margin: 28px 0 16px 0;"></div>
-                                                <p style="font-size: 11px; color: #ffffff; text-align: center; margin: 0;">
+                                                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
                                                     Budget Wisely • Smart Financial Tracking
                                                 </p>
-
                                             </td>
                                         </tr>
                                     </table>
-
                                 </td>
                             </tr>
                         </table>
-
                     </body>
                     </html>
                     """
 
-                    # 6. Send
+                    # 4. Message Dispatch
                     msg = MIMEMultipart("alternative")
                     msg['From'] = sender_email
                     msg['To'] = user.email
-                    msg['Subject'] = f"📊 Budget Summary for {current_month_name} - Budget Wisely"
+                    msg['Subject'] = f"📈 Budget Summary - {formatted_date} - Budget Wisely"
+                    
                     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
                     server.send_message(msg)
