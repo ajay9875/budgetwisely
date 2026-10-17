@@ -526,7 +526,6 @@ max-width: 350px;
 
 html, body {
     max-width: 100% !important;
-    overflow-x: hidden !important; /* Hard block for horizontal scrolling */
 }
 
 /* --- Responsive Adjustments (Strict Single-Column & No Scroll) --- */
