@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Budget Wisely: My Profile{% endblock %}
+
+{% block content %}
+<div class="all" style="display: flex; flex-direction: column; width: 100%;">
+    <div class="results" style="width: 100%; max-width: 1000px; margin: 0 auto;">
+        <h2 class="section-title"><i class="fa-solid fa-id-card"></i> My Profile</h2>
+        
+        <div style="display: flex; gap: 2rem; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; background: #f8fafc; padding: 1.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+            
+            <!-- Default User Icon with Green Active Badge -->
+            <div style="position: relative; width: 100px; height: 100px; flex-shrink: 0;">
+                <div style="width: 100%; height: 100%; background: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--primary);">
+                    <i class="fa-solid fa-user" style="font-size: 3rem; color: var(--primary);"></i>
+                </div>
+                <!-- Green Active Status Dot -->
+                <div style="position: absolute; bottom: 4px; right: 4px; width: 20px; height: 20px; background-color: #10b981; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" title="Active Now"></div>
+            </div>
+            
+            <!-- User Details -->
+            <div>
+                <h3 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">{{ user.name }}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.95rem;"><i class="fa-solid fa-envelope"></i> {{ user.email }}</p>
+                <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.95rem;"><i class="fa-solid fa-calendar-check"></i> Account Age: <strong>{{ account_age }}</strong></p>
+                <p style="margin: 0.2rem 0 0 0; color: var(--text-muted); font-size: 0.85rem;">Joined: {{ user.created_at.strftime('%B %d, %Y') }}</p>
+            </div>
+        </div>
+
+        <!-- Lifetime Stats -->
+        <h3 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Lifetime Financial Overview</h3>
+        
+        <div class="summary-cards" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div class="summary-card">
+                <h3>Total Income</h3>
+                <p class="positive">₹{{ "%.2f"|format(stats.total_income) }}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Total Expenses</h3>
+                <p class="negative">₹{{ "%.2f"|format(stats.total_expenses) }}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Total Savings</h3>
+                <p class="{% if stats.total_savings < 0 %}negative{% else %}positive{% endif %}">
+                    ₹{{ "%.2f"|format(stats.total_savings|abs) }}
+                </p>
+            </div>
+            <div class="summary-card">
+                <h3>Months Tracked</h3>
+                <p style="color: var(--text-main);">{{ stats.months_count }} Months</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

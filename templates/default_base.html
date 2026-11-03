@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Budget Wisely{% endblock %}</title>
+    
+    <!-- Fonts & Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS Links -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Default.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Home.css') }}">
+    <!-- Auth specific CSS block -->
+    {% block auth_css %}{% endblock %}
+    
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
+</head>
+<body>
+
+    <!-- Header Navigation (Dark Theme) -->
+    <header class="navbar" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
+        <div class="nav-container">
+            <a href="{{ url_for('default') }}" class="brand-logo" style="color: #ffffff;">
+                <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely Logo">
+                <span>Budget<strong> Wisely</strong></span>
+            </a>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation" style="color: #ffffff;">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
+            <div class="nav-wrapper" id="navWrapper">
+                <nav class="nav-links" style="background-color: transparent;">
+                    <a href="{{ url_for('about_us') }}" style="color: #cbd5e1;">About Us</a>
+                    <a href="{{ url_for('services') }}" style="color: #cbd5e1;">Services</a>
+                    <a href="{{ url_for('contact_us') }}" style="color: #cbd5e1;">Contact</a>
+                </nav>
+
+                <div class="nav-auth">
+                    {% if not session.get('user_id') %}
+                        <a href="{{ url_for('login') }}" class="nav-btn nav-btn-outline" style="color: #ffffff; border-color: #475569;">Log In</a>
+                        <a href="{{ url_for('signup') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Sign Up Free</a>
+                    {% else %}
+                        <a href="{{ url_for('dashboard') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Dashboard</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Flash Messages -->
+    <div class="message-wrapper" style="position: absolute; top: 80px; right: 20px; z-index: 1000; max-width: 350px;">   
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>  
+
+    <!-- Dynamic Content Block -->
+    <!-- Note: display: block ensures the landing page charts are visible -->
+    <main style="min-height: calc(100vh - 350px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; width: 100%;">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col brand-col">
+                <div class="footer-logo">
+                    <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely">
+                    <span>Budget Wisely</span>
+                </div>
+                <p>Empower your personal financial journey with intelligent budgeting and real-time expense tracking.</p>
+                <p class="footer-location">
+                    <i class="fa-solid fa-location-dot"></i> Hyderabad, Telangana, India
+                </p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <a href="landing_page#features">Features</a>
+                <a href="landing_page#analytics">Analytics</a>
+                <a href="{{ url_for('about_us') }}">About Us</a>
+                <a href="{{ url_for('services') }}">Services</a>
+            </div>
+            <div class="footer-col">
+                <h4>Account</h4>
+                <a href="{{ url_for('login') }}">Log In</a>
+                <a href="{{ url_for('signup') }}">Sign Up</a>
+                <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+            </div>
+            <div class="footer-col">
+                <h4>Legal</h4>
+                <a href="{{ url_for('contact_us') }}">Contact Us</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 BudgetWisely. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Mobile Nav Script -->
+    <script>
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navWrapper = document.getElementById('navWrapper');
+        const menuIcon = mobileMenuBtn.querySelector('i');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            navWrapper.classList.toggle('active');
+            menuIcon.classList.toggle('fa-bars');
+            menuIcon.classList.toggle('fa-xmark');
+        });
+
+        document.querySelectorAll('.nav-wrapper a').forEach(link => {
+            link.addEventListener('click', () => {
+                navWrapper.classList.remove('active');
+                menuIcon.classList.add('fa-bars');
+                menuIcon.classList.remove('fa-xmark');
+            });
+        });
+    </script>
+</body>
+</html>

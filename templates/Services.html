@@ -1,183 +1,158 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Our Services | Professional Solutions</title>
+{% extends "default_base.html" %}
 
-  <!-- Google Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+{% block title %}Our Services | Budget Wisely{% endblock %}
 
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+{% block auth_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Services.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Aboutus.css') }}">
+<style>
+    /* 🚨 THIS OVERRIDE PROTECTS THE NEW NAVBAR */
+    header:not(.navbar) { display: none !important; } 
+    
+    /* Scoping the Services page styles */
+    .services-wrapper { padding: 2rem 1rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    
+    .services-wrapper .hero-content { text-align: center; margin-bottom: 3rem; }
+    .services-wrapper .hero-content h1 { font-size: 2.5rem; color: #0f172a; margin-bottom: 1rem; }
+    .services-wrapper .hero-content p { color: #64748b; font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+    
+    .services-wrapper .filter-container { display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap; }
+    .services-wrapper .filter-btn { padding: 0.5rem 1.5rem; border-radius: 20px; border: 1px solid #cbd5e1; background: white; color: #334155; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .services-wrapper .filter-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+    
+    .services-wrapper .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+    .services-wrapper .service-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; transition: opacity 0.3s ease; }
+    .services-wrapper .icon-wrapper { background: #e0e7ff; color: #4f46e5; width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1.5rem; }
+    .services-wrapper .service-card h3 { color: #0f172a; margin-bottom: 1rem; }
+    .services-wrapper .service-card p { color: #64748b; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .services-wrapper .feature-list { list-style: none; padding: 0; margin-bottom: 1.5rem; color: #334155; font-size: 0.9rem; }
+    .services-wrapper .feature-list li { margin-bottom: 0.5rem; }
+    .services-wrapper .feature-list i { color: #10b981; margin-right: 8px; }
+    .services-wrapper .card-btn { display: inline-flex; align-items: center; gap: 5px; color: #4f46e5; text-decoration: none; font-weight: 600; }
+</style>
+{% endblock %}
 
-    <!-- Custom Stylesheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Services.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Aboutus.css') }}">
-
-</head>
-<body>
-
-<!-- Modern Header Navbar -->
-<header class="header-nav">
-    <div class="header-content">
-        <a href="{{ url_for('default') }}" class="back-link" title="Return Home">
-            <i class="fa-solid fa-arrow-left"></i>
-            <span>Home</span>
-        </a>
-        <h2><i class="fa-solid fa-briefcase header-icon"></i> Our Services</h2>
+{% block content %}
+<main class="services-wrapper">
+    <!-- Hero Section -->
+    <div class="hero-content">
+        <span class="badge" style="background: #e0e7ff; color: #4f46e5; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 600; display: inline-block; margin-bottom: 1rem;">What We Offer</span>
+        <h1>High-Impact Services Built for Your Growth</h1>
+        <p>We deliver modern, scalable, and custom tailored solutions to take your business to the next level.</p>
     </div>
-</header>
 
-
-
-  <!-- Services Grid Section -->
-  <main class="services-section">
-    <div class="container">
-        <!-- Hero Section -->
-    <div class="container hero-content">
-      <span class="badge">What We Offer</span>
-      <h1>High-Impact Services Built for Your Growth</h1>
-      <p>We deliver modern, scalable, and custom tailored solutions to take your business to the next level.</p>
-    </div>
-      <!-- Filter Controls -->
-      <div class="filter-container">
+    <!-- Filter Controls -->
+    <div class="filter-container">
         <button class="filter-btn active" data-filter="all">All Services</button>
         <button class="filter-btn" data-filter="tech">Technology</button>
         <button class="filter-btn" data-filter="design">Design</button>
         <button class="filter-btn" data-filter="growth">Growth</button>
-      </div>
+    </div>
 
-      <!-- Services Grid -->
-      <div class="services-grid">
-
+    <!-- Services Grid -->
+    <div class="services-grid">
         <!-- Service 1 -->
         <article class="service-card" data-category="tech">
-          <div class="icon-wrapper">
-            <i class="fa-solid fa-laptop-code"></i>
-          </div>
-          <h3>Web Development</h3>
-          <p>Custom, lightning-fast web applications built using cutting-edge frameworks tailored to your business needs.</p>
-          <ul class="feature-list">
-            <li><i class="fa-solid fa-check"></i> Responsive Design</li>
-            <li><i class="fa-solid fa-check"></i> SEO & Performance Optimized</li>
-          </ul>
-          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            <div class="icon-wrapper"><i class="fa-solid fa-laptop-code"></i></div>
+            <h3>Web Development</h3>
+            <p>Custom, lightning-fast web applications built using cutting-edge frameworks tailored to your business needs.</p>
+            <ul class="feature-list">
+                <li><i class="fa-solid fa-check"></i> Responsive Design</li>
+                <li><i class="fa-solid fa-check"></i> SEO & Performance Optimized</li>
+            </ul>
+            <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
         </article>
 
         <!-- Service 2 -->
         <article class="service-card" data-category="design">
-          <div class="icon-wrapper">
-            <i class="fa-solid fa-palette"></i>
-          </div>
-          <h3>UI/UX Design</h3>
-          <p>User-centered interface designs and seamless user experiences that convert visitors into loyal customers.</p>
-          <ul class="feature-list">
-            <li><i class="fa-solid fa-check"></i> Wireframing & Prototyping</li>
-            <li><i class="fa-solid fa-check"></i> Design Systems</li>
-          </ul>
-          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            <div class="icon-wrapper"><i class="fa-solid fa-palette"></i></div>
+            <h3>UI/UX Design</h3>
+            <p>User-centered interface designs and seamless user experiences that convert visitors into loyal customers.</p>
+            <ul class="feature-list">
+                <li><i class="fa-solid fa-check"></i> Wireframing & Prototyping</li>
+                <li><i class="fa-solid fa-check"></i> Design Systems</li>
+            </ul>
+            <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
         </article>
 
         <!-- Service 3 -->
         <article class="service-card" data-category="growth">
-          <div class="icon-wrapper">
-            <i class="fa-solid fa-chart-line"></i>
-          </div>
-          <h3>Digital Marketing</h3>
-          <p>Data-driven marketing strategies designed to increase reach, generate quality leads, and boost revenue.</p>
-          <ul class="feature-list">
-            <li><i class="fa-solid fa-check"></i> SEO & Content Strategy</li>
-            <li><i class="fa-solid fa-check"></i> Social Media & Ads</li>
-          </ul>
-          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            <div class="icon-wrapper"><i class="fa-solid fa-chart-line"></i></div>
+            <h3>Digital Marketing</h3>
+            <p>Data-driven marketing strategies designed to increase reach, generate quality leads, and boost revenue.</p>
+            <ul class="feature-list">
+                <li><i class="fa-solid fa-check"></i> SEO & Content Strategy</li>
+                <li><i class="fa-solid fa-check"></i> Social Media & Ads</li>
+            </ul>
+            <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
         </article>
 
         <!-- Service 4 -->
         <article class="service-card" data-category="tech">
-          <div class="icon-wrapper">
-            <i class="fa-solid fa-cloud"></i>
-          </div>
-          <h3>Cloud Solutions</h3>
-          <p>Secure, scalable cloud infrastructure and DevOps services to optimize speed and application uptime.</p>
-          <ul class="feature-list">
-            <li><i class="fa-solid fa-check"></i> AWS & Azure Management</li>
-            <li><i class="fa-solid fa-check"></i> Automated CI/CD Pipelines</li>
-          </ul>
-          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            <div class="icon-wrapper"><i class="fa-solid fa-cloud"></i></div>
+            <h3>Cloud Solutions</h3>
+            <p>Secure, scalable cloud infrastructure and DevOps services to optimize speed and application uptime.</p>
+            <ul class="feature-list">
+                <li><i class="fa-solid fa-check"></i> AWS & Azure Management</li>
+                <li><i class="fa-solid fa-check"></i> Automated CI/CD Pipelines</li>
+            </ul>
+            <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
         </article>
 
         <!-- Service 5 -->
         <article class="service-card" data-category="growth">
-          <div class="icon-wrapper">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <h3>Cybersecurity</h3>
-          <p>Comprehensive security audits and end-to-end protection to keep your company and customer data safe.</p>
-          <ul class="feature-list">
-            <li><i class="fa-solid fa-check"></i> Threat Assessment</li>
-            <li><i class="fa-solid fa-check"></i> Compliance & Monitoring</li>
-          </ul>
-          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            <div class="icon-wrapper"><i class="fa-solid fa-shield-halved"></i></div>
+            <h3>Cybersecurity</h3>
+            <p>Comprehensive security audits and end-to-end protection to keep your company and customer data safe.</p>
+            <ul class="feature-list">
+                <li><i class="fa-solid fa-check"></i> Threat Assessment</li>
+                <li><i class="fa-solid fa-check"></i> Compliance & Monitoring</li>
+            </ul>
+            <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
         </article>
 
         <!-- Service 6 -->
         <article class="service-card" data-category="design">
-          <div class="icon-wrapper">
-            <i class="fa-solid fa-bullhorn"></i>
-          </div>
-          <h3>Brand Identity</h3>
-          <p>Stand out from the crowd with custom logo design, color palettes, typography, and brand messaging.</p>
-          <ul class="feature-list">
-            <li><i class="fa-solid fa-check"></i> Logo & Brand Guidelines</li>
-            <li><i class="fa-solid fa-check"></i> Marketing Assets</li>
-          </ul>
-          <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            <div class="icon-wrapper"><i class="fa-solid fa-bullhorn"></i></div>
+            <h3>Brand Identity</h3>
+            <p>Stand out from the crowd with custom logo design, color palettes, typography, and brand messaging.</p>
+            <ul class="feature-list">
+                <li><i class="fa-solid fa-check"></i> Logo & Brand Guidelines</li>
+                <li><i class="fa-solid fa-check"></i> Marketing Assets</li>
+            </ul>
+            <a href="#" class="card-btn">Learn More <i class="fa-solid fa-arrow-right"></i></a>
         </article>
-
-      </div>
     </div>
-  </main>
+</main>
+{% endblock %}
 
-  <!-- Call To Action Section -->
-  <section class="cta-section">
-    <div class="container cta-content">
-      <h2>Have a Project in Mind?</h2>
-      <p>Let's talk about how we can help transform your ideas into reality.</p>
-      <a href="{{ url_for('contact_us') }}" class="cta-btn"><i class="fa-solid fa-paper-plane"></i> Get in Touch</a>
-    </div>
-  </section>
-
-  <!-- Custom JavaScript -->
-  <script>
+{% block scripts %}
+<script>
     document.addEventListener("DOMContentLoaded", () => {
-  const filterButtons = document.querySelectorAll(".filter-btn");
-  const serviceCards = document.querySelectorAll(".service-card");
+        const filterButtons = document.querySelectorAll(".filter-btn");
+        const serviceCards = document.querySelectorAll(".service-card");
 
-  // Filtering Logic
-  filterButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      // 1. Manage Active Class on Buttons
-      filterButtons.forEach((btn) => btn.classList.remove("active"));
-      button.classList.add("active");
+        filterButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                // Reset active states
+                filterButtons.forEach((btn) => btn.classList.remove("active"));
+                button.classList.add("active");
 
-      // 2. Filter Cards
-      const filterValue = button.getAttribute("data-filter");
+                const filterValue = button.getAttribute("data-filter");
 
-      serviceCards.forEach((card) => {
-        const cardCategory = card.getAttribute("data-category");
-
-        if (filterValue === "all" || filterValue === cardCategory) {
-          card.classList.remove("hide");
-        } else {
-          card.classList.add("hide");
-        }
-      });
+                // Animate filtering
+                serviceCards.forEach((card) => {
+                    const cardCategory = card.getAttribute("data-category");
+                    if (filterValue === "all" || filterValue === cardCategory) {
+                        card.style.display = "block";
+                        setTimeout(() => card.style.opacity = "1", 50);
+                    } else {
+                        card.style.opacity = "0";
+                        setTimeout(() => card.style.display = "none", 200);
+                    }
+                });
+            });
+        });
     });
-  });
-});
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}

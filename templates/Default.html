@@ -20,39 +20,39 @@
 </head>
 <body>
 
-    <!-- Header Navigation -->
-    <header class="navbar">
+    <!-- Header Navigation (Dark Theme) -->
+    <header class="navbar" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
         <div class="nav-container">
-            <a href="#top" class="brand-logo">
+            <a href="{{ url_for('default') }}" class="brand-logo" style="color: #ffffff;">
                 <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely Logo">
-                <span>Budget<strong>Wisely</strong></span>
+                <span>Budget Wisely</span>
             </a>
             
-            <!-- Hamburger Toggle Button -->
-            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation" style="color: #ffffff;">
                 <i class="fa-solid fa-bars"></i>
             </button>
 
-            <!-- Collapsible Navigation Wrapper -->
             <div class="nav-wrapper" id="navWrapper">
-                <nav class="nav-links">
-                    <a href="#top" class="active">Home</a>
-                    <a href="#features">Features</a>
-                    <a href="#analytics">Analytics</a>
-                    <a href="{{ url_for('about_us') }}">About Us</a>
-                    <a href="{{ url_for('contact_us') }}">Contact</a>
+                <nav class="nav-links" style="background-color: transparent;">
+                    <a href="{{ url_for('about_us') }}" style="color: #cbd5e1;">About Us</a>
+                    <a href="{{ url_for('services') }}" style="color: #cbd5e1;">Services</a>
+                    <a href="{{ url_for('contact_us') }}" style="color: #cbd5e1;">Contact</a>
                 </nav>
 
                 <div class="nav-auth">
-                    <a href="{{ url_for('login') }}" class="nav-btn nav-btn-outline">Log In</a>
-                    <a href="{{ url_for('signup') }}" class="nav-btn nav-btn-primary">Sign Up Free</a>
+                    {% if not session.get('user_id') %}
+                        <a href="{{ url_for('login') }}" class="nav-btn nav-btn-outline" style="color: #ffffff; border-color: #475569;">Log In</a>
+                        <a href="{{ url_for('signup') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Sign Up Free</a>
+                    {% else %}
+                        <a href="{{ url_for('dashboard') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Dashboard</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </header>
 
     <!-- Flash Messages -->
-    <div class="message-wrapper">   
+    <div class="message-wrapper" style="position: absolute; top: 80px; right: 20px; z-index: 1000; max-width: 350px;">   
         {% with messages = get_flashed_messages(with_categories=True) %}
             {% if messages %}
                 <div class="flash-messages">
@@ -204,6 +204,18 @@
                     <li>Exportable financial summaries</li>
                 </ul>
             </div>
+            
+            <!-- 👈 NEW VAULT FEATURE -->
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-lock"></i></div>
+                <h2>Secure Vault</h2>
+                <p>Store your sensitive financial notes, PINs, and account details safely with a secondary layer of security.</p>
+                <ul>
+                    <li>PIN-protected access</li>
+                    <li>Encrypted data storage</li>
+                    <li>Quick access to secure notes</li>
+                </ul>
+            </div>
         </div>
     </section>
 
@@ -216,13 +228,13 @@
         </div>
     </section>
 
-    <!-- Footer -->
+    <!-- Footer (Identical to default_base.html) -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-col brand-col">
                 <div class="footer-logo">
                     <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely">
-                    <span>BudgetWisely</span>
+                    <span>Budget Wisely</span>
                 </div>
                 <p>Empower your personal financial journey with intelligent budgeting and real-time expense tracking.</p>
                 <p class="footer-location">
@@ -231,21 +243,19 @@
             </div>
             <div class="footer-col">
                 <h4>Quick Links</h4>
-                <a href="#top">Home</a>
-                <a href="#features">Features</a>
-                <a href="#analytics">Analytics</a>
+                <a href="landing_page#features">Features</a>
+                <a href="landing_page#analytics">Analytics</a>
                 <a href="{{ url_for('about_us') }}">About Us</a>
+                <a href="{{ url_for('services') }}">Services</a>
             </div>
-
             <div class="footer-col">
                 <h4>Account</h4>
                 <a href="{{ url_for('login') }}">Log In</a>
                 <a href="{{ url_for('signup') }}">Sign Up</a>
                 <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
             </div>
-
             <div class="footer-col">
-                <h4>Support & Legal</h4>
+                <h4>Legal</h4>
                 <a href="{{ url_for('contact_us') }}">Contact Us</a>
                 <a href="#">Privacy Policy</a>
                 <a href="#">Terms of Service</a>
@@ -273,7 +283,6 @@
             }
         });
 
-        // Close mobile navbar when clicking any link
         document.querySelectorAll('.nav-wrapper a').forEach(link => {
             link.addEventListener('click', () => {
                 navWrapper.classList.remove('active');

@@ -1,101 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: Contact Us</title>
-    
-    <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% extends "default_base.html" %}
 
-    <!-- FontAwesome 6 Vector Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- External CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
-    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Contact.css') }}">
+{% block title %}Contact Us | Budget Wisely{% endblock %}
 
-</head>
-<body>
+{% block auth_css %}
+<style>
+    /* Isolate the contact form from the global header */
+    .contact-wrapper { width: 100%; display: flex; justify-content: center; padding: 2rem 1rem; }
+    .contact-card { width: 100%; max-width: 600px; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    .contact-card h2 { margin-top: 0; color: #0f172a; text-align: center; }
+    .contact-card p.sub { color: #64748b; text-align: center; margin-bottom: 2rem; }
+    .contact-card .input-group { position: relative; margin-bottom: 1rem; }
+    .contact-card .input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #64748b; }
+    .contact-card textarea + .input-icon { top: 15px; transform: none; }
+    .contact-card input, .contact-card textarea { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box; }
+    .contact-card input:focus, .contact-card textarea:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
+    .contact-card button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 0.5rem; }
+    .contact-card button:hover { background: #4338ca; }
+    .contact-card .home-link { display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #4f46e5; text-decoration: none; font-weight: 500; margin-top: 1.5rem; width: 100%; }
+</style>
+{% endblock %}
 
-    <!-- Header Navigation -->
-    <header class="header-nav">
-        <div class="header-content">
-            <a href="{{ url_for('default') }}" class="back-link" title="Return Home">
-                <i class="fa-solid fa-arrow-left"></i>
-                <span>Home</span>
-            </a>
-            <h2><i class="fa-solid fa-envelope-open-text header-icon"></i> Contact Us</h2>
-        </div>
-    </header>
+{% block content %}
+<div class="contact-wrapper">
+    <div class="contact-card">
+        
+        <h2><i class="fa-solid fa-envelope-open-text" style="color: #4f46e5; margin-right: 8px;"></i> Get in Touch</h2>
+        <p class="sub">Have questions or feedback? Send us a message below.</p>
 
-    <!-- Flash Messages -->
-    <div class="message">    
-        {% with messages = get_flashed_messages(with_categories=True) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="flash-message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+        <form method="POST" action="{{ url_for('contact_us') }}">
+            <div class="input-group">
+                <i class="fa-solid fa-user input-icon"></i>
+                <input type="text" name="name" placeholder="Full Name" required autocomplete="name">
+            </div>
+
+            <div class="input-group">
+                <i class="fa-solid fa-phone input-icon"></i>
+                <input type="tel" name="number" placeholder="Phone Number" required autocomplete="tel">
+            </div>
+
+            <div class="input-group">
+                <i class="fa-solid fa-envelope input-icon"></i>
+                <input type="email" name="email" placeholder="Enter Email" required autocomplete="email">
+            </div>
+
+            <div class="input-group">
+                <i class="fa-solid fa-comment-dots input-icon"></i>
+                <textarea name="message" placeholder="Type your message here..." rows="4" required></textarea>
+            </div>
+
+            <button type="submit">
+                <i class="fa-solid fa-paper-plane"></i> Send Message
+            </button>
+        </form>            
+        
+        <a href="{{ url_for('default') }}" class="home-link">
+            <i class="fa-solid fa-house"></i> Back to Home
+        </a>
     </div>
-
-    <!-- Main Content Container -->
-    <main class="all">
-        <div class="auth-container">
-            
-            <div class="form-header">
-                <h2>Get in Touch</h2>
-                <p>Have questions or feedback? Send us a message below.</p>
-            </div>
-
-            <form method="POST" action="{{ url_for('contact_us') }}" class="contact-form">
-                
-                <!-- Full Name Input -->
-                <div class="input-group">
-                    <i class="fa-solid fa-user input-icon"></i>
-                    <input type="text" name="name" placeholder="Full Name" required autocomplete="name">
-                </div>
-
-                <!-- Phone Number Input -->
-                <div class="input-group">
-                    <i class="fa-solid fa-phone input-icon"></i>
-                    <input type="tel" name="number" placeholder="Phone Number" required autocomplete="tel">
-                </div>
-
-                <!-- Email Input -->
-                <div class="input-group">
-                    <i class="fa-solid fa-envelope input-icon"></i>
-                    <input type="email" name="email" placeholder="Enter Email" required autocomplete="email">
-                </div>
-
-                <!-- Textarea Input -->
-                <div class="input-group textarea-group">
-                    <i class="fa-solid fa-comment-dots input-icon"></i>
-                    <textarea name="message" placeholder="Type your message here..." rows="4" required></textarea>
-                </div>
-
-                <!-- Submit Button -->
-                <button type="submit" class="submit-btn">
-                    <i class="fa-solid fa-paper-plane"></i> Send Message
-                </button>
-            </form>            
-            
-            <div class="form-footer">
-                <a href="{{ url_for('default') }}" class="home-link">
-                    <i class="fa-solid fa-house"></i> Back to Home
-                </a>
-            </div>
-
-        </div>
-    </main>
-
-</body>
-</html>
+</div>
+{% endblock %}

@@ -4,14 +4,15 @@ import smtplib
 from calendar import month_name
 from datetime import datetime, timedelta
 from functools import wraps
+from flask_migrate import Migrate  # 👈 Add this at the top
 
 from dotenv import load_dotenv
 from email_validator import EmailNotValidError, validate_email
-from flask import (Flask, flash, make_response, redirect, render_template,
-                   request, session, url_for)
+from flask import (Flask, flash, make_response, redirect, render_template, request, session, url_for)
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
+from dateutil.relativedelta import relativedelta
 
 # Handle PyMySQL binding safely if driver is present
 try:
@@ -45,6 +46,8 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
+migrate = Migrate(app, db)         # 👈 Add this right after db initialization
+
 # Database Models
 class User(db.Model):
     __tablename__ = 'users'
@@ -53,7 +56,18 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    vault_pin = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Add this new model at the bottom of your models:
+class VaultItem(db.Model):
+    __tablename__ = 'vault_items'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    secret_text = db.Column(db.Text, nullable=False) # Can hold huge amounts of text
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) # 👈 ADD THIS
 
 class UserBudget(db.Model):
     __tablename__ = 'users_budget'
@@ -85,6 +99,16 @@ class Expense(db.Model):
 
 with app.app_context():
     db.create_all()
+
+# At the top:
+from datetime import datetime, timedelta, timezone
+
+# Add this function right above your routes (e.g., right after the `never_cache` function):
+def to_ist(utc_dt):
+    if not utc_dt: 
+        return None
+    # Convert UTC to IST (UTC + 5:30)
+    return utc_dt.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=5, minutes=30)))
 
 def never_cache(f):
     @wraps(f)
@@ -121,8 +145,8 @@ def dashboard():
 
     expiry_timestamp = session.get('session_expiry', 0)
     current_time = datetime.now().timestamp()
-    remaining_seconds = max(0, int(expiry_timestamp - current_time))
-
+    #remaining_seconds = max(0, int(expiry_timestamp - current_time))
+ 
     if current_time > expiry_timestamp:
         session.clear()
         flash('Session time expired! Please login again', 'error')
@@ -154,7 +178,6 @@ def dashboard():
         expenses = Expense.query.filter_by(budget_id=budget.id).all()
         total_expenses = sum(float(exp.expense_amount) for exp in expenses)
         savings = float(budget.monthly_income) - total_expenses
-
         budget_result = {
             "month_name": budget.month_name,
             "monthly_income": float(budget.monthly_income),
@@ -174,7 +197,125 @@ def dashboard():
     return render_template("Index.html", 
                            username=user.name,
                            budget_result=budget_result, 
-                           remaining_time=remaining_seconds)
+                           expiry_timestamp=int(expiry_timestamp * 1000)) # Pass milliseconds for JS
+
+@app.route('/vault', methods=['GET', 'POST'])
+@never_cache
+def vault():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user = db.session.get(User, session['user_id'])
+    
+    # --- 1. If User hasn't set a PIN yet, redirect to setup ---
+    if not user.vault_pin:
+        flash("Please set up a Vault PIN first.", "info")
+        return redirect(url_for('vault_setup'))
+
+    # --- 2. Check if Vault is Unlocked ---
+    is_unlocked = session.get('vault_unlocked', False)
+
+    # --- 3. Handle PIN Submission ---
+    if request.method == 'POST' and not is_unlocked:
+        entered_pin = request.form.get('pin', '').strip()
+        if check_password_hash(user.vault_pin, entered_pin):
+            session['vault_unlocked'] = True
+            return redirect(url_for('vault'))
+        else:
+            flash("Incorrect Vault PIN!", "error")
+            return redirect(url_for('vault'))
+
+    # --- 4. Load Data if Unlocked ---
+    vault_items = []
+    if is_unlocked:
+        vault_items = VaultItem.query.filter_by(user_id=user.user_id).order_by(VaultItem.created_at.desc()).all()
+        # Convert times to IST for the template
+        for item in vault_items:
+            item.created_ist = to_ist(item.created_at).strftime('%d %b %Y, %I:%M %p')
+            if item.updated_at and item.updated_at != item.created_at:
+                item.updated_ist = to_ist(item.updated_at).strftime('%d %b %Y, %I:%M %p')
+            else:
+                item.updated_ist = None
+
+    return render_template('Vault.html', user=user, is_unlocked=is_unlocked, items=vault_items)
+
+@app.route('/vault/setup', methods=['GET', 'POST'])
+@never_cache
+def vault_setup():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    user = db.session.get(User, session['user_id'])
+    
+    if request.method == 'POST':
+        account_pass = request.form.get('account_pass', '').strip()
+        new_pin = request.form.get('new_pin', '').strip()
+
+        if not check_password_hash(user.password, account_pass):
+            flash("Incorrect account password.", "error")
+        elif len(new_pin) < 4:
+            flash("PIN must be at least 4 characters.", "error")
+        else:
+            user.vault_pin = generate_password_hash(new_pin)
+            db.session.commit()
+            session['vault_unlocked'] = True # Auto-unlock after setup
+            flash("Vault created successfully!", "success")
+            return redirect(url_for('vault'))
+            
+    return render_template('VaultSetup.html')
+
+@app.route('/vault/lock')
+def vault_lock():
+    session.pop('vault_unlocked', None)
+    flash("Vault locked securely.", "info")
+    return redirect(url_for('vault'))
+
+@app.route('/vault/add', methods=['POST'])
+def vault_add():
+    if not session.get('vault_unlocked'): return redirect(url_for('vault'))
+    
+    title = request.form.get('title', '').strip()
+    secret = request.form.get('secret_text', '').strip()
+    
+    if title and secret:
+        new_item = VaultItem(user_id=session['user_id'], title=title, secret_text=secret)
+        db.session.add(new_item)
+        db.session.commit()
+        flash("Secret saved to Vault!", "success")
+    else:
+        flash("Title and Secret text are required.", "error")
+        
+    return redirect(url_for('vault'))
+
+@app.route('/vault/edit/<int:item_id>', methods=['POST'])
+def vault_edit(item_id):
+    if not session.get('vault_unlocked'): 
+        return redirect(url_for('vault'))
+        
+    item = VaultItem.query.get_or_404(item_id)
+    
+    # Security check: Ensure the item belongs to the logged-in user
+    if item.user_id == session['user_id']:
+        title = request.form.get('title', '').strip()
+        secret = request.form.get('secret_text', '').strip()
+        
+        if title and secret:
+            item.title = title
+            item.secret_text = secret
+            db.session.commit()
+            flash("Secret updated successfully!", "success")
+        else:
+            flash("Title and Secret text cannot be empty.", "error")
+            
+    return redirect(url_for('vault'))
+
+@app.route('/vault/delete/<int:item_id>')
+def vault_delete(item_id):
+    if not session.get('vault_unlocked'): return redirect(url_for('vault'))
+    item = VaultItem.query.get_or_404(item_id)
+    if item.user_id == session['user_id']:
+        db.session.delete(item)
+        db.session.commit()
+        flash("Secret deleted.", "success")
+    return redirect(url_for('vault'))
 
 @app.route("/all-budgets", methods=["GET"])
 @never_cache
@@ -198,21 +339,33 @@ def all_budgets():
         flash('Session time expired! Please login again', 'error')
         return redirect(url_for('login'))
 
+    MONTH_ORDER = {
+        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+        'September': 9, 'October': 10, 'November': 11, 'December': 12
+    }
+
     try:
-        all_user_budgets = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc()).all()
+        all_user_budgets = (
+            UserBudget.query
+            .filter_by(user_id=user_id)
+            .order_by(UserBudget.id.desc())
+            .all()
+        )
 
         if not all_user_budgets:
             flash("No budget data found! Please add a month first.", "error")
-            return render_template("Allbudgets.html", username=username, budgets=[])
+            return render_template("Allbudgets.html", username=username, budgets_by_year=[])
 
-        budget_data = []
+        # ---- Build per-budget records + group by year ----
+        groups = {}   # year (int) -> list of budget dicts
+        uncategorized = []   # fallback if a month_name has no year
 
         for budget in all_user_budgets:
             expenses = Expense.query.filter_by(budget_id=budget.id).all()
 
             expense_items = []
             total_expenses = 0.0
-
             for exp in expenses:
                 amount = float(exp.expense_amount)
                 expense_items.append({
@@ -223,6 +376,7 @@ def all_budgets():
                     "expense_amount": amount,
                     "day_name": exp.day_name,
                     "dayname": exp.day_name,
+                    "month_name": exp.month_name,        # ✅ needed by template
                     "date": exp.date
                 })
                 total_expenses += amount
@@ -239,24 +393,149 @@ def all_budgets():
                     for item in expense_items
                 ]
 
-            budget_data.append({
+            raw_month = (budget.month_name or "").strip()
+            parts = raw_month.split()
+            month_word = parts[0] if parts else ""
+            year_val = None
+            for token in parts[1:]:
+                if token.isdigit():
+                    year_val = int(token)
+                    break
+
+            record = {
                 "id": budget.id,
-                "month_name": budget.month_name,
+                "month_name": raw_month,
+                "month_word": month_word,
+                "month_num": MONTH_ORDER.get(month_word, 0),
+                "year": year_val,
                 "monthly_income": float(budget.monthly_income),
                 "total_expenses": total_expenses,
                 "savings": savings,
-                "savings_percentage": round((savings / float(budget.monthly_income)) * 100, 2) if float(budget.monthly_income) > 0 else 0,
+                "savings_percentage": round((savings / float(budget.monthly_income)) * 100, 2)
+                                     if float(budget.monthly_income) > 0 else 0,
                 "expenses": expense_items,
                 "expense_percentages": expense_percentages
+            }
+
+            if year_val is None:
+                uncategorized.append(record)
+            else:
+                groups.setdefault(year_val, []).append(record)
+
+        # ---- Build the final ordered structure ----
+        budgets_by_year = []
+
+        # Descending year order
+        for year in sorted(groups.keys(), reverse=True):
+            year_budgets = groups[year]
+
+            # Descending month order within the year
+            year_budgets.sort(
+                key=lambda b: (b["month_num"], b["id"]),
+                reverse=True
+            )
+
+            total_income = sum(b["monthly_income"] for b in year_budgets)
+            total_exp = sum(b["total_expenses"] for b in year_budgets)
+            total_sav = total_income - total_exp
+
+            budgets_by_year.append({
+                "label": str(year),
+                "year": year,
+                "is_uncategorized": False,
+                "budgets": year_budgets,
+                "total_income": total_income,
+                "total_expenses": total_exp,
+                "total_savings": total_sav,
+                "expenses_percentage": round((total_exp / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
+                "savings_percentage": round((total_sav / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
             })
 
-        response = make_response(render_template("Allbudgets.html", username=username, budgets=budget_data, now=datetime.now()))
-        return response
+        # Append uncategorized group at the very bottom, if any
+        if uncategorized:
+            uncategorized.sort(key=lambda b: (b["month_num"], b["id"]), reverse=True)
+            total_income = sum(b["monthly_income"] for b in uncategorized)
+            total_exp = sum(b["total_expenses"] for b in uncategorized)
+            total_sav = total_income - total_exp
+            budgets_by_year.append({
+                "label": "Uncategorized",
+                "year": None,
+                "is_uncategorized": True,
+                "budgets": uncategorized,
+                "total_income": total_income,
+                "total_expenses": total_exp,
+                "total_savings": total_sav,
+                "expenses_percentage": round((total_exp / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
+                "savings_percentage": round((total_sav / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
+            })
+
+        return make_response(render_template(
+            "Allbudgets.html",
+            username=username,
+            budgets_by_year=budgets_by_year,
+            now=datetime.now()
+        ))
 
     except Exception as e:
+        app.logger.exception("all_budgets failed")
         flash(f"Error retrieving budget data: {str(e)}", "error")
-        return render_template("Allbudgets.html", username=username, budgets=[])
+        return render_template("Allbudgets.html", username=username, budgets_by_year=[])
 
+@app.route('/profile')
+@never_cache
+def profile():
+    if 'user_id' not in session:
+        flash("Session expired! Please login again.", 'error')
+        return redirect(url_for('login'))
+
+    user_id = int(session['user_id'])
+    user = db.session.get(User, user_id)
+    if not user:
+        session.clear()
+        return redirect(url_for('login'))
+
+    # 1. Calculate Account Age (Dynamically hide 0 values)
+    delta = relativedelta(datetime.utcnow(), user.created_at)
+    
+    age_parts = []
+    if delta.years > 0:
+        age_parts.append(f"{delta.years}yr{'s' if delta.years > 1 else ''}")
+    if delta.months > 0:
+        age_parts.append(f"{delta.months}month{'s' if delta.months > 1 else ''}")
+    if delta.days > 0:
+        age_parts.append(f"{delta.days}day{'s' if delta.days > 1 else ''}")
+        
+    # If the list is empty (meaning 0 days), show "Today"
+    account_age = " ".join(age_parts) if age_parts else "Joined Today"
+
+    # 2. Calculate Accurate Lifetime Stats
+    budgets = UserBudget.query.filter_by(user_id=user_id).all()
+    total_income = sum(float(b.monthly_income) for b in budgets)
+    
+    expenses = Expense.query.filter_by(user_id=user_id).all()
+    total_expenses = sum(float(e.expense_amount) for e in expenses)
+    
+    stats = {
+        "total_income": total_income,
+        "total_expenses": total_expenses,
+        "total_savings": total_income - total_expenses,
+        "months_count": len(budgets)
+    }
+
+    return render_template('Profile.html', user=user, stats=stats, account_age=account_age)
+
+@app.route('/settings')
+@never_cache
+def settings():
+    if 'user_id' not in session:
+        flash("Session expired! Please login again.", 'error')
+        return redirect(url_for('login'))
+    return render_template('Settings.html')
+    
 @app.route('/add_month', methods=['POST'])
 def add_month():
     if 'user_id' not in session:
@@ -288,7 +567,7 @@ def add_month():
 
     try:
         date_obj = datetime.strptime(date, "%Y-%m-%d")
-        month_name = date_obj.strftime("%B").strip()
+        month_name = date_obj.strftime("%B %Y").strip()   # e.g. "February 2026"
     except ValueError:
         flash("Invalid date format!", 'error')
         return redirect(url_for('dashboard'))
@@ -462,7 +741,7 @@ def add_data():
 
         try:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-            month_name = date_obj.strftime("%B").strip()
+            month_name = date_obj.strftime("%B %Y").strip()       # ✅ "February 2026"
             day_name = date_obj.strftime("%A")
         except ValueError:
             flash('Invalid date format! Please use YYYY-MM-DD.', 'error')
@@ -515,6 +794,70 @@ def add_data():
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", 'error')
         return redirect(url_for(target_page))
+
+@app.route('/delete_month', methods=['POST'])
+def delete_month():
+    # ---- 1. Authentication check ----
+    if 'user_id' not in session:
+        flash("Session expired! Please login again.", 'error')
+        return redirect(url_for('login'))
+
+    # ---- 2. Session integrity check ----
+    try:
+        user_id = int(session['user_id'])
+    except (ValueError, TypeError, KeyError):
+        session.clear()
+        flash("Invalid session. Please login again.", 'error')
+        return redirect(url_for('login'))
+
+    # ---- 3. Session expiry check (matches your other routes) ----
+    expiry_timestamp = session.get('session_expiry', 0)
+    if datetime.now().timestamp() > expiry_timestamp:
+        session.clear()
+        flash("Session time expired! Please login again.", 'error')
+        return redirect(url_for('login'))
+
+    # ---- 4. Validate input ----
+    flag = request.form.get('flag', '').strip()
+    month_name = request.form.get('month_name', '').strip()
+    if not month_name:
+        flash("No month specified for deletion.", 'error')
+        return redirect(url_for('dashboard'))
+
+    try:
+        # ---- 5. Find the budget (scoped to this user only) ----
+        budget = UserBudget.query.filter(
+            UserBudget.user_id == user_id,
+            func.lower(func.trim(UserBudget.month_name)) == month_name.lower()
+        ).first()
+
+        if not budget:
+            flash(f"No budget found for {month_name}.", 'error')
+            return redirect(url_for('dashboard'))
+
+        # ---- 6. Explicit expense cleanup (don't rely only on cascade) ----
+        # Your relationship has cascade='all, delete-orphan', but being explicit
+        # is safer across DB backends (MySQL/Postgres) and avoids orphans.
+        Expense.query.filter_by(budget_id=budget.id).delete(synchronize_session=False)
+
+        # ---- 7. Delete the budget row ----
+        db.session.delete(budget)
+        db.session.commit()
+
+        # ---- 8. Clear any stale session state ----
+        if session.get('selected_month', '').lower() == month_name.lower():
+            session.pop('selected_month', None)
+
+        flash(f"Budget for {month_name} deleted successfully!", 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        # Log the real error server-side; show a safe message to the user
+        app.logger.exception(f"delete_month failed for user {user_id}, month {month_name}")
+        flash(f"Failed to delete budget: {str(e)}", 'error')
+    if flag == 'index':
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('all_budgets'))
 
 @app.route('/delete_expense', methods=['POST'])
 def delete_expense():
@@ -608,7 +951,7 @@ def send_weekly_budget_reports():
                 try:
                     # 1. Fetch current month data and formatted date
                     now = datetime.now()
-                    current_month_name = now.strftime("%B")   # e.g., "August"
+                    current_month_name = now.strftime("%B %Y")   # ✅ "August 2026"
                     formatted_date = now.strftime("%b %d")    # e.g., "Aug 11"
 
                     budget = UserBudget.query.filter_by(
@@ -865,7 +1208,8 @@ def signup():
                     new_user = User(
                         name=name,
                         email=email,
-                        password=generate_password_hash(password)
+                        password=generate_password_hash(password),
+                        created_at=datetime.utcnow()  # 👈 EXPLICITLY SET THIS
                     )
                     db.session.add(new_user)
                     db.session.commit()
@@ -1159,10 +1503,20 @@ def contact_us():
 
     return render_template('Contact.html')
 
+#====================
+# Logout Route for clearing session for manual logout and session expiration
+#====================
+
 @app.route('/logout')
 def logout():
     session.clear()  # Clears all session keys at once
-    flash("Logged out successfully!", "success")
+    
+    # Check if the flag was passed in the URL
+    if request.args.get('expired') == 'true':
+        flash("Your session has expired. Please login again.", "error") # Red/Warning
+    else:
+        flash("Logged out successfully!", "success") # Green/Success
+        
     return redirect(url_for('login'))
 
 @app.before_request
@@ -1179,4 +1533,4 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=False, use_reloader=True)

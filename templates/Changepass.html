@@ -1,40 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: Change Password</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
-    <script src="{{ url_for('static', filename='Javascript/allmessage.js')}}"></script>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
-</head>
-<body>
+{% extends "base.html" %}
 
-    <!-- Flash Messages -->
-    <div class="message">    
-    {% with messages = get_flashed_messages(with_categories=True) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="flash-message {{ category }}">{{ message }}</div>
-                {% endfor %}
+{% block title %}Budget Wisely: Change Password{% endblock %}
+
+{% block head %}
+<style>
+    /* Force inputs to be full width and styled cleanly */
+    .calculator input[type="password"] {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 0.95rem;
+        font-family: inherit;
+        color: var(--text-main);
+        background-color: #ffffff;
+        transition: var(--transition);
+        box-sizing: border-box;
+    }
+
+    .calculator input[type="password"]:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="all" style="justify-content: center; display: flex; align-items: center; min-height: 65vh;">
+    <div class="calculator" style="max-width: 450px; width: 100%;">
+        
+        <h2 class="section-title" style="justify-content: center;">
+            <i class="fa-solid fa-key"></i> Update Password
+        </h2>
+        
+        <form method="POST" action="{{ url_for('change_pass') }}" onsubmit="handleFormSubmit(event)">
+            <div class="form-group">
+                <label for="oldpassword">Current Password</label>
+                <input type="password" id="oldpassword" name="oldpassword" placeholder="Enter current password" autocomplete="current-password" required>
             </div>
-        {% endif %}
-    {% endwith %}
-    </div>
+            
+            <div class="form-group">
+                <label for="newpassword">New Password</label>
+                <input type="password" id="newpassword" name="newpassword" placeholder="Min 6 characters" minlength="6" autocomplete="new-password" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="cpassword">Confirm New Password</label>
+                <input type="password" id="cpassword" name="cpassword" placeholder="Confirm new password" minlength="6" autocomplete="new-password" required>
+            </div>
+            
+            <button type="submit" class="btn-primary" style="margin-top: 1rem; width: 100%;">
+                <i class="fa-solid fa-shield-halved"></i> Update Password
+            </button>
+        </form>
 
-    <div class="all">
-        <div class="auth-container">
-            <h2>Update Password</h2>
-            <form method="POST" action="{{ url_for('change_pass') }}">
-                <input type="password" name="oldpassword" placeholder="Current password" autocomplete="current-password" required>
-                <input type="password" name="newpassword" placeholder="New password" minlength="6" autocomplete="new-password" required>
-                <input type="password" name="cpassword" placeholder="Confirm new password" minlength="6" autocomplete="new-password" required>
-                <button type="submit">Update Password</button>
-            </form>
-            <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <a href="{{ url_for('dashboard') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem; font-weight: 500;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </a>
         </div>
+
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

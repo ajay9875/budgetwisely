@@ -68,25 +68,31 @@ header {
     gap: 1rem;
 }
 
-.nav-links {
+.header-left {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    flex-wrap: wrap;
 }
 
-header a {
-    text-decoration: none;
-    color: #cbd5e1;
-    font-weight: 500;
-    font-size: 0.95rem;
-    transition: var(--transition);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
+.brand-logo {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    text-decoration: none !important;
 }
 
-header a:hover { color: #ffffff; }
+.brand-logo img {
+    height: 40px !important;
+    width: 40px !important;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.brand-logo span {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+}
 
 .header-right {
     display: flex;
@@ -121,7 +127,6 @@ header a:hover { color: #ffffff; }
 }
 
 .profile-btn:hover { border-color: #ffffff; }
-.profile-btn img { width: 100%; height: 100%; object-fit: cover; }
 
 #profile-details {
     display: none;
@@ -145,42 +150,31 @@ header a:hover { color: #ffffff; }
     gap: 0.5rem;
     padding: 0.6rem 0.8rem;
     color: var(--text-main);
+    text-decoration: none;
     border-radius: var(--radius-sm);
 }
 
 #profile-details a:hover { background-color: var(--bg-body); color: var(--primary); }
 
 /* --- Dashboard Layout --- */
-/* --- Updated Dashboard Layout --- */
 .all {
     display: flex;
-    flex-direction: column; /* Stacks the Left action section above Right summary on all screens */
+    flex-direction: column;
     gap: 2rem;
     padding: 2rem;
     max-width: 1400px;
     margin: 0 auto;
 }
 
-/* 
-  1. Desktop & Tablet (Default):
-  Displays form cards side-by-side in 2 equal columns.
-*/
 .left {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* 2 equal columns */
-    gap: 1.5rem; /* Spacing between the form cards */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
 }
 
-/* Prevent calculator margin overlap when inside grid */
-.left .calculator {
-    margin-bottom: 0;
-}
-
-.right {
-    width: 100%;
-    min-width: 0;
-}
+.left .calculator { margin-bottom: 0; }
+.right { width: 100%; min-width: 0; }
 
 /* --- Cards & Controls --- */
 .calculator, .results {
@@ -202,9 +196,7 @@ header a:hover { color: #ffffff; }
 }
 
 /* --- Forms & Inputs --- */
-.form-group {
-    margin-bottom: 1.25rem;
-}
+.form-group { margin-bottom: 1.25rem; }
 
 label {
     display: block;
@@ -214,7 +206,7 @@ label {
     margin-bottom: 0.4rem;
 }
 
-input[type="text"], input[type="number"], input[type="date"], select {
+input[type="text"], input[type="number"], input[type="date"], input[type="password"], select {
     width: 100%;
     padding: 0.65rem 0.85rem;
     border: 1px solid var(--border);
@@ -320,9 +312,7 @@ input:focus, select:focus {
     position: relative;
 }
 
-.chart-container.full-width {
-    grid-column: 1 / -1;
-}
+.chart-container.full-width { grid-column: 1 / -1; }
 
 .chart-title {
     font-size: 0.95rem;
@@ -404,128 +394,30 @@ footer {
     border-top: 1px solid var(--border);
 }
 
-/* Responsive Breakpoints */
+footer a:hover {
+    color: var(--primary) !important;
+}
+
+/* =========================================
+   RESPONSIVE LAYOUT
+========================================= */
+
+/* Tablet & Mobile Grid Adjustments */
 @media (max-width: 992px) {
     .all { flex-direction: column; padding: 1rem; }
     .left, .right { flex: 0 0 100%; width: 100%; }
 }
 
-/* --- Responsive Breakpoints --- */
-
-/* 2. Mobile Screens (600px and below): Switch forms back to 1 column */
+/* Mobile Screens (<= 600px) */
 @media (max-width: 600px) {
-    header { 
-        flex-direction: column; 
-        align-items: flex-start; 
-    }
-    
-    .header-right { 
-        width: 100%; 
-        justify-content: space-between; 
-        margin-left: 0; 
-    }
-    
-    .all { 
-        padding: 1rem; 
-    }
-
-    /* Collapse forms into a single column for smaller screens */
-    .left {
-        grid-template-columns: 1fr;
-    }
-
-    .summary-cards { 
-        grid-template-columns: 1fr; 
-    }
-    
-    .expense-table th:nth-child(3), 
-    .expense-table td:nth-child(3) { 
-        display: none; 
-    }
-    header { flex-direction: column; align-items: flex-start; }
-    .header-right { width: 100%; justify-content: space-between; margin-left: 0; }
-    .summary-cards { grid-template-columns: 1fr; }
-    .expense-table th:nth-child(3), .expense-table td:nth-child(3) { display: none; }
-}
-
-/* Container for Hamburger + Links */
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-/* Hide Hamburger button by default on Desktop */
-.hamburger-btn {
-    display: none;
-    background: transparent;
-    border: none;
-    color: #ffffff;
-    font-size: 1.4rem;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-    transition: var(--transition);
-}
-
-.hamburger-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* Responsive Styles for Tablet and Mobile (<= 992px) */
-@media (max-width: 992px) {
-    header {
-        position: relative;
-        padding: 0.75rem 1rem;
-    }
-
-    /* Show Hamburger button */
-    .hamburger-btn {
-        display: block;
-    }
-
-    /* Convert .nav-links into a vertical dropdown menu */
-    .nav-links {
-        display: none; /* Hidden by default */
-        position: absolute;
-        top: 100%;
-        left: 0;
-        width: 100%;
-        background-color: #1e293b;
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 1rem;
-        gap: 1rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        z-index: 999;
-    }
-
-    /* Class added via JS when clicked */
-    .nav-links.active {
-        display: flex;
-    }
-
-    .nav-links a {
-        width: 100%;
-        padding: 0.5rem 0;
-        font-size: 1rem;
-    }
-}
-
-/* Mobile Adjustments (<= 600px) */
-/* --- Mobile Screens (600px and below) --- */
-@media (max-width: 600px) {
-    /* Keep Header as a single horizontal row */
     header { 
         flex-direction: row !important; 
         align-items: center !important; 
         justify-content: space-between !important;
-        padding: 0.5rem 0.75rem !important;
+        padding: 0.5rem 1rem !important;
         flex-wrap: nowrap !important;
     }
 
-    /* Keep right side aligned horizontally */
     .header-right { 
         width: auto !important; 
         margin-left: auto !important; 
@@ -533,21 +425,118 @@ footer {
         align-items: center !important;
     }
 
-    /* Slightly shrink timer padding so it fits cleanly on small screens */
     #session-timer {
         font-size: 0.75rem;
         padding: 0.25rem 0.5rem;
         white-space: nowrap;
     }
 
-    /* Hide text username on tiny screens to save space */
-    #username { 
-        display: none !important; 
-    }
+    #username { display: none !important; }
 
-    /* Layout grid adjustments for page body */
     .all { padding: 0.75rem; }
     .left { grid-template-columns: 1fr; }
     .summary-cards { grid-template-columns: 1fr; }
     .expense-table th:nth-child(3), .expense-table td:nth-child(3) { display: none; }
 }
+/* Only if you want to hide the logo text on tiny screens (<= 400px) */
+@media (max-width: 400px) {
+    .brand-logo span {
+        display: none;
+    }
+}
+
+/* =========================================
+   LOGOUT CONFIRMATION MODAL
+========================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal-box {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    animation: modalPop 0.2s ease-out;
+}
+
+@keyframes modalPop {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal-icon {
+    width: 60px;
+    height: 60px;
+    background: #fef2f2;
+    color: var(--danger);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 1rem auto;
+}
+
+.modal-box h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-main);
+    font-size: 1.25rem;
+}
+
+.modal-box p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin: 0 0 1.5rem 0;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.btn-cancel {
+    flex: 1;
+    background: var(--bg-body);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-cancel:hover { background: #e2e8f0; }
+
+.btn-confirm {
+    flex: 1;
+    background: var(--danger);
+    color: #ffffff;
+    border: none;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: var(--transition);
+}
+
+.btn-confirm:hover { background: #dc2626; }

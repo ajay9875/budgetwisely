@@ -1,515 +1,206 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: Dashboard</title>
-    
-    <!-- Modern Font and Font Awesome Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+{% extends "base.html" %}
+
+{% block title %}Budget Wisely: Dashboard{% endblock %}
+
+{% block head %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
     <script src="{{ url_for('static', filename='Javascript/Index.js') }}"></script>
+{% endblock %}
 
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Index.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
-</head>
-<body>
-
-    <!-- Loading Overlay Spinner -->
-    <div id="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <div id="loading-text">Processing your request...</div>
-    </div>
-
-    <!-- Sticky Header Navbar -->
-    <header>
-        <div class="header-left">
-            <button class="hamburger-btn" onclick="toggleMobileNav()" aria-label="Toggle navigation menu">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-
-            <div class="nav-links" id="nav-links">
-                <a href="{{ url_for('about_us') }}"><i class="fa-solid fa-circle-info"></i> About Us</a>
-                <a href="{{ url_for('services') }}"><i class="fa-solid fa-gear"></i> Services</a>
-                <a href="{{ url_for('contact_us') }}"><i class="fa-solid fa-envelope"></i> Contact Us</a>
-                <a href="{{ url_for('all_budgets') }}"><i class="fa-solid fa-wallet"></i> My Budget</a>
-            </div>
-        </div>
-        
-        <div class="header-right">
-            <div id="session-timer"><i class="fa-regular fa-clock"></i> <span>--:--</span></div> 
-            
-            <span id="username" style="font-size: 0.9rem; font-weight: 500;">
-                Hello, {{ username if username else 'Guest' }}!
-            </span>
-            
-            <div class="profile-container">
-                <button class="profile-btn" onclick="toggleProfileDetails();" aria-label="Toggle user profile dropdown"> 
-                    <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="User Avatar">
-                </button>
-                <div class="profile" id="profile-details">
-                    <a href="{{ url_for('all_budgets') }}"><i class="fa-solid fa-chart-line"></i> My Budget</a>
-                    <a href="{{ url_for('change_pass') }}"><i class="fa-solid fa-key"></i> Change Password</a>
-                    <a href="#"><i class="fa-solid fa-sliders"></i> Settings</a>
-                    <a href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+{% block content %}
+<div class="all">
+    <div class="left">
+        <!-- Form 1: Add New Budget Month -->
+        <section class="calculator">
+            <h2 class="section-title"><i class="fa-solid fa-pen-to-square"></i> Budget Controls</h2>
+            <form method="POST" action="{{ url_for('add_month') }}" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label for="date-month">Choose Month</label>
+                    <input type="date" id="date-month" name="date" required>
                 </div>
-            </div>
-        </div>
-    </header>
+                <div class="form-group">
+                    <label for="income">Monthly Income (₹)</label>
+                    <input type="number" id="income" step="0.01" name="income" placeholder="e.g. 50000" required>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-calendar-plus"></i> Add Month</button>
+            </form>
+        </section>
 
-    <!-- Flash Notifications Container -->
-    <div class="message">    
-    {% with messages = get_flashed_messages(with_categories=True) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="flash-message {{ category }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-    </div>
-
-    <div class="all">
-        <!-- Sidebar Controls Left Pane -->
-        <div class="left">
-            
-            <!-- Form 1: Add New Budget Month -->
-            <section class="calculator">
-                <h2 class="section-title"><i class="fa-solid fa-pen-to-square"></i> Budget Controls</h2>
-                <form method="POST" action="{{ url_for('add_month') }}" onsubmit="handleFormSubmit(event)">
-                    <div class="form-group">
-                        <label for="date-month">Choose Month</label>
-                        <input type="date" id="date-month" name="date" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="income">Monthly Income (₹)</label>
-                        <input type="number" id="income" step="0.01" name="income" placeholder="e.g. 50000" required>
-                    </div>
-                    <button type="submit" class="btn-primary"><i class="fa-solid fa-calendar-plus"></i> Add Month</button>
-                </form>
-            </section>
-
-            <!-- Form 2: Add New Expense Entry -->
-            <section class="calculator">
-                <h2 class="section-title"><i class="fa-solid fa-receipt"></i> Add Expense</h2>
-                <form method="POST" action="{{ url_for('add_data') }}" onsubmit="handleFormSubmit(event)">
-                    <div class="form-group">
-                        <label for="date-exp">Transaction Date</label>
-                        <input type="date" id="date-exp" name="exp_date" required>
-                        <input type="hidden" name="flag" value="index">
-                    </div>
-
-                    <div id="expense-fields">
-                        <div class="expense-entry">
-                            <div class="form-group">
-                                <label for="exp_category">Expense Category</label>
-                                <input type="text" id="exp_category" name="exp_category" placeholder="e.g. Groceries" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="exp_amount">Amount (₹)</label>
-                                <input type="number" id="exp_amount" step="0.01" name="exp_amount" placeholder="e.g. 1500" required>
-                            </div>
+        <!-- Form 2: Add New Expense Entry -->
+        <section class="calculator">
+            <h2 class="section-title"><i class="fa-solid fa-receipt"></i> Add Expense</h2>
+            <form method="POST" action="{{ url_for('add_data') }}" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label for="date-exp">Transaction Date</label>
+                    <input type="date" id="date-exp" name="exp_date" required>
+                    <input type="hidden" name="flag" value="index">
+                </div>
+                <div id="expense-fields">
+                    <div class="expense-entry">
+                        <div class="form-group">
+                            <label for="exp_category">Expense Category</label>
+                            <input type="text" id="exp_category" name="exp_category" placeholder="e.g. Groceries" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="exp_amount">Amount (₹)</label>
+                            <input type="number" id="exp_amount" step="0.01" name="exp_amount" placeholder="e.g. 1500" required>
                         </div>
                     </div>
-                    
-                    <button type="submit" class="btn-primary"><i class="fa-solid fa-calculator"></i> Calculate Budget</button>
-                </form>
-            </section>
-
-        </div>
-
-        <!-- Main Display Dashboard Right Pane -->
-        <div class="right">
-            {% if budget_result %}
-            <section class="results">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                    <h2 class="section-title" style="margin: 0;"><i class="fa-solid fa-chart-pie"></i> Overview: {{ budget_result.month_name }}</h2>
-                    
-                    <form method="POST" action="/edit_income" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
-                        <input type="number" name="new_income" step="0.01" placeholder="{{ budget_result.monthly_income }}" required class="inline-input" style="width: 120px;">
-                        <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="fa-solid fa-pen"></i> Update</button>
-                    </form>
                 </div>
-                
-                <!-- Summary Cards -->
-                <div class="summary-cards">
-                    <div class="summary-card">
-                        <h3>Income</h3>
-                        <p class="positive">₹{{ "%.2f"|format(budget_result.monthly_income) }}</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Expenses</h3>
-                        <p class="{% if budget_result.total_expenses > budget_result.monthly_income %}negative{% else %}positive{% endif %}">
-                            ₹{{ "%.2f"|format(budget_result.total_expenses) }}
-                            <span class="percentage">
-                                ({{ "%.1f"|format((budget_result.total_expenses / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% of Income)
-                            </span>
-                        </p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Savings</h3>
-                        <p class="{% if budget_result.savings < 0 %}negative{% else %}positive{% endif %} value-display">
-                            ₹{{ "%.2f"|format(budget_result.savings|abs) }}
-                            <span class="percentage">
-                                ({{ "%.1f"|format((budget_result.savings / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% of Income)
-                            </span>
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Charts -->
-                <div class="charts-grid">
-                    <div class="chart-container full-width">
-                        <div class="chart-title">Budget Breakdown (Income vs Expenses vs Savings)</div>
-                        <canvas id="budgetChart" height="100"></canvas>
-                    </div>
-
-                    <div class="chart-container">
-                        <div class="chart-title">Expense Categories</div>
-                        {% if budget_result.expenses and budget_result.expenses|length > 0 %}
-                            <canvas id="expensesChart"></canvas>
-                        {% else %}
-                            <p style="text-align: center; color: var(--text-muted); padding: 2rem 0;">No expense records found.</p>
-                        {% endif %}
-                    </div>
-                                        
-                    <div class="chart-container">
-                        <div class="chart-title">Income Allocation</div>
-                        <canvas id="allocationChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Expense Table -->
-                <div class="expense-details">
-                    <h3 style="margin-top: 0; font-size: 1.05rem;"><i class="fa-solid fa-list-check"></i> Expense Details & Adjustments</h3>
-                    {% if budget_result.expenses %}
-                    <div style="overflow-x: auto;">
-                        <table class="expense-table">
-                            <thead>
-                                <tr>
-                                    <th>Category</th>
-                                    <th>Amount</th>
-                                    <th>Distribution</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for expense in budget_result.expenses %}
-                                <tr>
-                                    <td>{{ expense.category }}</td>
-                                    <td>₹{{ "%.2f"|format(expense.amount) }}</td>
-                                    <td>
-                                        <span class="percentage">
-                                            {{ "%.1f"|format((expense.amount / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% of Income /
-                                            {{ "%.1f"|format((expense.amount / budget_result.total_expenses) * 100 if budget_result.total_expenses > 0 else 0) }}% of Expenses
-                                        </span>
-                                    </td>
-                                    <td style="color: var(--text-muted); font-size: 0.85rem;">
-                                        {{ expense.dayname }} {{ expense.date }}
-                                    </td>
-                                    <td>
-                                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                            <button type="button" class="icon-btn" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" title="Edit Expense">
-                                                <i class="fa-solid fa-pen"></i>
-                                            </button>
-
-                                            <!-- Delete Button -->
-
-                                            <button type="button" class="icon-btn" title="Delete Expense" onclick="confirmDeleteExpense('{{ expense.id }}', '{{ budget_result.month_name }}')">
-                                                <i class="fa-solid fa-trash-can" style="color: var(--danger);"></i>
-                                            </button>
-                                        
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
-                                    <td colspan="5">
-                                        <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
-                                            <input type="hidden" name="expense_id" value="{{ expense.id }}">
-                                            <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
-                                            <input type="hidden" name="target_page" value="dashboard">
-
-                                            <label style="font-size: 0.85rem; font-weight: 600;">Category:</label>
-                                            <input type="text" name="category" value="{{ expense.category }}" required class="inline-input" style="width: 140px;">
-
-                                            <label style="font-size: 0.85rem; font-weight: 600;">Amount (₹):</label>
-                                            <input type="number" step="0.01" name="amount" value="{{ expense.amount }}" required class="inline-input" style="width: 100px;">
-
-                                            <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;">
-                                                <i class="fa-solid fa-check"></i> Save
-                                            </button>
-                                            <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;">
-                                                <i class="fa-solid fa-xmark"></i>
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">No detailed expenses logged yet.</p>
-                    {% endif %}
-                </div>
-
-                <section class="delete_month" style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-                    <form method="POST" action="/delete_month" id="deleteMonthForm">
-                        <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
-                        <button type="button" class="btn-danger" onclick="confirmDeleteMonth()"><i class="fa-solid fa-triangle-exclamation"></i> Delete Entire Month Budget</button>
-                    </form>
-                </section>
-            </section>
-            {% endif %}
-        </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-calculator"></i> Calculate Budget</button>
+            </form>
+        </section>
     </div>
 
-    <footer>
-        <p>&copy; 2026 Budget Wisely (Monthly Budget Calculator). All Rights Reserved.</p>
-    </footer>
+    <div class="right">
+        {% if budget_result %}
+        <section class="results">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <h2 class="section-title" style="margin: 0;"><i class="fa-solid fa-chart-pie"></i> Overview: {{ budget_result.month_name }}</h2>
+                <form method="POST" action="/edit_income" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
+                    <input type="number" name="new_income" step="0.01" placeholder="{{ budget_result.monthly_income }}" required class="inline-input" style="width: 120px;">
+                    <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="fa-solid fa-pen"></i> Update</button>
+                </form>
+            </div>
+            
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <h3>Income</h3>
+                    <p class="positive">₹{{ "%.2f"|format(budget_result.monthly_income) }}</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Expenses</h3>
+                    <p class="{% if budget_result.total_expenses > budget_result.monthly_income %}negative{% else %}positive{% endif %}">
+                        ₹{{ "%.2f"|format(budget_result.total_expenses) }}
+                        <span class="percentage">({{ "%.1f"|format((budget_result.total_expenses / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% of Income)</span>
+                    </p>
+                </div>
+                <div class="summary-card">
+                    <h3>Savings</h3>
+                    <p class="{% if budget_result.savings < 0 %}negative{% else %}positive{% endif %} value-display">
+                        ₹{{ "%.2f"|format(budget_result.savings|abs) }}
+                        <span class="percentage">({{ "%.1f"|format((budget_result.savings / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% of Income)</span>
+                    </p>
+                </div>
+            </div>
 
-    <!-- Core Dynamic Scripts -->
-    <script>
-        function toggleMobileNav() {
-            const nav = document.getElementById("nav-links");
-            nav.classList.toggle("active");
-        }
+            <div class="charts-grid">
+                <div class="chart-container full-width">
+                    <div class="chart-title">Budget Breakdown</div>
+                    <canvas id="budgetChart" height="100"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Expense Categories</div>
+                    {% if budget_result.expenses and budget_result.expenses|length > 0 %}
+                        <canvas id="expensesChart"></canvas>
+                    {% else %}
+                        <p style="text-align: center; color: var(--text-muted); padding: 2rem 0;">No expense records found.</p>
+                    {% endif %}
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Income Allocation</div>
+                    <canvas id="allocationChart"></canvas>
+                </div>
+            </div>
 
-        function toggleProfileDetails() {
-            document.getElementById("profile-details").classList.toggle("show");
-        }
+            <div class="expense-details">
+                <h3 style="margin-top: 0; font-size: 1.05rem;"><i class="fa-solid fa-list-check"></i> Expense Details</h3>
+                {% if budget_result.expenses %}
+                <div style="overflow-x: auto;">
+                    <table class="expense-table">
+                        <thead>
+                            <tr><th>Category</th><th>Amount</th><th>Distribution</th><th>Date</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in budget_result.expenses %}
+                            <tr>
+                                <td>{{ expense.category }}</td>
+                                <td>₹{{ "%.2f"|format(expense.amount) }}</td>
+                                <td><span class="percentage">{{ "%.1f"|format((expense.amount / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% of Income / {{ "%.1f"|format((expense.amount / budget_result.total_expenses) * 100 if budget_result.total_expenses > 0 else 0) }}% of Expenses</span></td>
+                                <td style="color: var(--text-muted); font-size: 0.85rem;">{{ expense.dayname }} {{ expense.date }}</td>
+                                <td>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <button type="button" class="icon-btn" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')"><i class="fa-solid fa-pen"></i></button>
+                                        <button type="button" class="icon-btn" onclick="confirmDeleteExpense('{{ expense.id }}', '{{ budget_result.month_name }}')"><i class="fa-solid fa-trash-can" style="color: var(--danger);"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
+                                <td colspan="5">
+                                    <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
+                                        <input type="hidden" name="expense_id" value="{{ expense.id }}">
+                                        <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
+                                        <input type="hidden" name="target_page" value="dashboard">
+                                        <label style="font-size: 0.85rem; font-weight: 600;">Category:</label>
+                                        <input type="text" name="category" value="{{ expense.category }}" required class="inline-input" style="width: 140px;">
+                                        <label style="font-size: 0.85rem; font-weight: 600;">Amount (₹):</label>
+                                        <input type="number" step="0.01" name="amount" value="{{ expense.amount }}" required class="inline-input" style="width: 100px;">
+                                        <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;"><i class="fa-solid fa-check"></i> Save</button>
+                                        <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;"><i class="fa-solid fa-xmark"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p style="color: var(--text-muted); font-size: 0.9rem;">No detailed expenses logged yet.</p>
+                {% endif %}
+            </div>
 
-        function toggleExpenseForm(formId) {
-            const el = document.getElementById(formId);
-            el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
-        }
+            <section class="delete_month" style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <form method="POST" action="/delete_month" id="deleteMonthForm">
+                    <input type="hidden" name="flag" value="index">
+                    <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
+                    <button type="button" class="btn-danger" onclick="confirmDeleteMonth()"><i class="fa-solid fa-triangle-exclamation"></i> Delete Entire Month Budget</button>
+                </form>
+            </section>
+        </section>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
 
-        window.onclick = function(event) {
-            if (!event.target.matches('.profile-btn') && !event.target.matches('.profile-btn img')) {
-                const dropdowns = document.getElementsByClassName("profile");
-                for (let i = 0; i < dropdowns.length; i++) {
-                    let openDropdown = dropdowns[i];
-                    if (openDropdown.classList.contains('show')) {
-                        openDropdown.classList.remove('show');
-                    }
-                }
-            }
-        }
-
-        let serverTimeoutId;
-        function showLoadingSpinner(message) {
-            const overlay = document.getElementById('loading-overlay');
-            if (message) document.getElementById('loading-text').innerText = message;
-            overlay.style.display = 'flex';
-
-            serverTimeoutId = setTimeout(() => {
-                overlay.style.display = 'none';
-                alert('Server request timed out. Please check your network connection and try again.');
-            }, 15000);
-        }
-
-        function handleFormSubmit(e) {
-            showLoadingSpinner('Updating budget records...');
-        }
-
-        function confirmDeleteMonth() {
-            if (confirm("Are you sure you want to permanently delete this entire month's budget record? This cannot be undone.")) {
-                showLoadingSpinner('Deleting record...');
-                document.getElementById('deleteMonthForm').submit();
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            let remainingTime = parseInt("{{ remaining_time|default(0) }}") || 0;
-            const timerElement = document.querySelector("#session-timer span");
-            let timerId;
-
-            if (timerElement && remainingTime > 0) {
-                function updateTimer() {
-                    const mins = Math.floor(remainingTime / 60);
-                    const secs = remainingTime % 60;
-                    
-                    timerElement.innerText = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-                    timerElement.style.color = remainingTime < 300 ? "#ef4444" : "inherit";
-
-                    if (remainingTime > 0) {
-                        remainingTime--;
-                        timerId = setTimeout(updateTimer, 1000);
-                    } else {
-                        timerElement.innerText = "Expired!";
-                        clearTimeout(timerId);
-                        showLoadingSpinner('Session expired. Logging out...');
-                        setTimeout(() => window.location.href = "{{ url_for('logout') }}", 1500);
-                    }
-                }
-                updateTimer();
-
-                window.addEventListener('beforeunload', () => clearTimeout(timerId));
-            }
-        });
-    </script>
-
-{% if budget_result %}
+{% block scripts %}
 <script>
+    function toggleExpenseForm(formId) {
+        const el = document.getElementById(formId);
+        el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+    }
+    function confirmDeleteMonth() {
+        if (confirm("Are you sure you want to permanently delete this month?")) {
+            showLoadingSpinner('Deleting record...');
+            document.getElementById('deleteMonthForm').submit();
+        }
+    }
+
+    {% if budget_result %}
     document.addEventListener("DOMContentLoaded", function() {
-        const darkThemeScales = {
-            x: {
-                ticks: { color: '#9ca3af' },
-                grid: { color: 'rgba(255, 255, 255, 0.05)' }
-            },
-            y: {
-                beginAtZero: true,
-                ticks: { 
-                    color: '#9ca3af',
-                    callback: value => '₹' + value 
-                },
-                grid: { color: 'rgba(255, 255, 255, 0.08)' }
-            }
-        };
+        const darkThemeScales = { x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }, y: { beginAtZero: true, ticks: { color: '#9ca3af', callback: value => '₹' + value }, grid: { color: 'rgba(255, 255, 255, 0.08)' } } };
+        const darkTooltipOptions = { backgroundColor: '#1f2937', titleColor: '#f9fafb', bodyColor: '#e5e7eb', borderColor: '#374151', borderWidth: 1, padding: 10 };
 
-        const darkTooltipOptions = {
-            backgroundColor: '#1f2937',
-            titleColor: '#f9fafb',
-            bodyColor: '#e5e7eb',
-            borderColor: '#374151',
-            borderWidth: 1,
-            padding: 10
-        };
-
-        const budgetCtx = document.getElementById('budgetChart').getContext('2d');
-        new Chart(budgetCtx, {
+        new Chart(document.getElementById('budgetChart').getContext('2d'), {
             type: 'bar',
-            data: {
-                labels: ['Income', 'Expenses', 'Savings'],
-                datasets: [{
-                    label: 'Amount (₹)',
-                    data: [
-                        {{ budget_result.monthly_income }},
-                        {{ budget_result.total_expenses }},
-                        {{ budget_result.savings }}
-                    ],
-                    backgroundColor: [
-                        'rgba(99, 102, 241, 0.85)',
-                        'rgba(244, 63, 94, 0.85)',
-                        {% if budget_result.savings >= 0 %}
-                        'rgba(16, 185, 129, 0.85)'
-                        {% else %}
-                        'rgba(244, 63, 94, 0.85)'
-                        {% endif %}
-                    ],
-                    borderColor: [
-                        '#6366f1',
-                        '#f43f5e',
-                        {% if budget_result.savings >= 0 %}'#10b981'{% else %}'#f43f5e'{% endif %}
-                    ],
-                    borderWidth: 1,
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        ...darkTooltipOptions,
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) label += ': ₹';
-                                label += context.raw.toFixed(2);
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: darkThemeScales
-            }
+            data: { labels: ['Income', 'Expenses', 'Savings'], datasets: [{ label: 'Amount (₹)', data: [{{ budget_result.monthly_income }}, {{ budget_result.total_expenses }}, {{ budget_result.savings }}], backgroundColor: ['rgba(99, 102, 241, 0.85)', 'rgba(244, 63, 94, 0.85)', {% if budget_result.savings >= 0 %}'rgba(16, 185, 129, 0.85)'{% else %}'rgba(244, 63, 94, 0.85)'{% endif %}], borderColor: ['#6366f1', '#f43f5e', {% if budget_result.savings >= 0 %}'#10b981'{% else %}'#f43f5e'{% endif %}], borderWidth: 1, borderRadius: 6 }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: darkThemeScales }
         });
 
         {% if budget_result.expenses and budget_result.expenses|length > 0 %}
-        const expensesCtx = document.getElementById('expensesChart').getContext('2d');
-        new Chart(expensesCtx, {
+        new Chart(document.getElementById('expensesChart').getContext('2d'), {
             type: 'doughnut',
-            data: {
-                labels: [
-                    {% for expense in budget_result.expenses %}
-                        '{{ expense.category }}',
-                    {% endfor %}
-                ],
-                datasets: [{
-                    data: [
-                        {% for expense in budget_result.expenses %}
-                            {{ expense.amount }},
-                        {% endfor %}
-                    ],
-                    backgroundColor: [
-                        '#818cf8', '#f472b6', '#fbbf24', '#34d399', 
-                        '#a78bfa', '#22d3ee', '#fb923c', '#2dd4bf'
-                    ],
-                    borderColor: '#111827',
-                    borderWidth: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#374151',
-                            font: { family: 'Inter', size: 12 },
-                            padding: 15
-                        }
-                    },
-                    tooltip: darkTooltipOptions
-                }
-            }
+            data: { labels: [{% for expense in budget_result.expenses %}'{{ expense.category }}',{% endfor %}], datasets: [{ data: [{% for expense in budget_result.expenses %}{{ expense.amount }},{% endfor %}], backgroundColor: ['#818cf8', '#f472b6', '#fbbf24', '#34d399', '#a78bfa', '#22d3ee'], borderColor: '#111827', borderWidth: 3 }] },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
         });
         {% endif %}
 
-        const allocationCtx = document.getElementById('allocationChart').getContext('2d');
-        new Chart(allocationCtx, {
+        new Chart(document.getElementById('allocationChart').getContext('2d'), {
             type: 'doughnut',
-            data: {
-                labels: ['Expenses', 'Savings'],
-                datasets: [{
-                    data: [
-                        {{ budget_result.total_expenses }},
-                        {% if budget_result.savings > 0 %}{{ budget_result.savings }}{% else %}0{% endif %}
-                    ],
-                    backgroundColor: ['#f43f5e', '#10b981'],
-                    borderColor: '#111827',
-                    borderWidth: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#374151',
-                            font: { family: 'Inter', size: 12 },
-                            padding: 15
-                        }
-                    },
-                    tooltip: darkTooltipOptions
-                }
-            }
+            data: { labels: ['Expenses', 'Savings'], datasets: [{ data: [{{ budget_result.total_expenses }}, {% if budget_result.savings > 0 %}{{ budget_result.savings }}{% else %}0{% endif %}], backgroundColor: ['#f43f5e', '#10b981'], borderColor: '#111827', borderWidth: 3 }] },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
         });
     });
+    {% endif %}
 </script>
-{% endif %}
-</body>
-</html>
+{% endblock %}

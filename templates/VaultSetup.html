@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Setup Vault{% endblock %}
+
+{% block head %}
+<style>
+    /* Force inputs to fill the width just like on the dashboard */
+    .calculator input[type="password"] {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 0.95rem;
+        font-family: inherit;
+        color: var(--text-main);
+        background-color: #ffffff;
+        transition: var(--transition);
+        box-sizing: border-box;
+    }
+
+    .calculator input[type="password"]:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="all" style="justify-content: center; display: flex; align-items: center; min-height: 65vh; padding-top: 0; padding-bottom: 0;">
+    <div class="calculator" style="max-width: 450px; width: 100%; text-align: center; margin: 0 auto;">
+        <i class="fa-solid fa-shield-halved" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+        <h2 class="section-title" style="justify-content: center;">Create Your Vault PIN</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">This PIN will be required to unlock your saved secrets.</p>
+        
+        <form method="POST" style="text-align: left;" onsubmit="handleFormSubmit(event)">
+            <div class="form-group">
+                <label>Account Password (To verify identity)</label>
+                <input type="password" name="account_pass" required placeholder="Enter your login password">
+            </div>
+            <div class="form-group">
+                <label>New Vault PIN (Min 4 characters)</label>
+                <input type="password" name="new_pin" required minlength="4" placeholder="e.g. 1234 or mysecretpin">
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">Create Vault</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

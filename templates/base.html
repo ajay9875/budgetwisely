@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Budget Wisely{% endblock %}</title>
+    
+    <!-- Fonts and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+    
+    <!-- Page-specific CSS/JS in Head -->
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Global Loading Spinner -->
+    <div id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <div id="loading-text">Processing your request...</div>
+    </div>
+
+    <!-- Global Header -->
+    <header>
+        <!-- LEFT SIDE: Brand Logo -->
+        <div class="header-left">
+            <a href="{{ url_for('default') }}" class="brand-logo">
+                <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="Logo">
+                <span>Budget Wisely</span>
+            </a>
+        </div>
+        
+        <!-- RIGHT SIDE: Timer, Username, Profile -->
+        <div class="header-right">
+            <div id="session-timer"><i class="fa-regular fa-clock"></i> <span>--:--</span></div> 
+            
+            <span id="username" style="font-size: 0.9rem; font-weight: 500;">
+                Hello, {{ session.get('username', 'Guest') }}!
+            </span>
+            
+            <div class="profile-container">
+                <button class="profile-btn" onclick="toggleProfileDetails();" aria-label="Toggle user profile dropdown"> 
+                    <i class="fa-solid fa-user" style="font-size: 1.2rem; color: #ffffff;"></i>
+                </button>
+                <div class="profile" id="profile-details">
+                    <a href="{{ url_for('profile') }}"><i class="fa-solid fa-user"></i> My Profile</a>
+                    <a href="{{ url_for('all_budgets') }}"><i class="fa-solid fa-chart-line"></i> My Budget</a>
+                    <a href="{{ url_for('vault') }}"><i class="fa-solid fa-lock"></i> My Vault</a> 
+                    <a href="{{ url_for('change_pass') }}"><i class="fa-solid fa-key"></i> Change Password</a>
+                    <a href="{{ url_for('settings') }}"><i class="fa-solid fa-sliders"></i> Settings</a>
+                    <a href="javascript:void(0);" onclick="openLogoutModal()">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Global Flash Messages -->
+    <div class="message">    
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    </div>
+
+    <!-- Dynamic Content Block -->
+    {% block content %}{% endblock %}
+
+    <!-- Global Footer (Dark Theme, Simplified for Logged-in User) -->
+    <footer style="text-align: center; padding: 1.5rem; background-color: #1e293b; color: #94a3b8; font-size: 0.85rem; margin-top: auto; border-top: 1px solid #334155;">
+        <p style="margin: 0;">&copy; 2026 Budget Wisely. All Rights Reserved.</p>
+    </footer>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logout-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-icon">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </div>
+            <h3>Ready to leave?</h3>
+            <p>Are you sure you want to log out of Budget Wisely?</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+                <a href="{{ url_for('logout') }}" class="btn-confirm">Yes, Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
+    <script>
+        // Profile Dropdown Toggle
+        function toggleProfileDetails() {
+            document.getElementById("profile-details").classList.toggle("show");
+        }
+
+        // Logout Modal Functions
+        function openLogoutModal() {
+            document.getElementById('logout-modal').style.display = 'flex';
+            // Close the profile dropdown when modal opens
+            document.getElementById('profile-details').classList.remove('show');
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logout-modal').style.display = 'none';
+        }
+
+        // Close Profile Dropdown if clicked outside
+        window.onclick = function(event) {
+            if (!event.target.matches('.profile-btn') && !event.target.matches('.profile-btn i')) {
+                const dropdowns = document.getElementsByClassName("profile");
+                for (let i = 0; i < dropdowns.length; i++) {
+                    let openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+
+        // Loading Spinner
+        let serverTimeoutId;
+        function showLoadingSpinner(message) {
+            const overlay = document.getElementById('loading-overlay');
+            if (message) document.getElementById('loading-text').innerText = message;
+            overlay.style.display = 'flex';
+            serverTimeoutId = setTimeout(() => {
+                overlay.style.display = 'none';
+                alert('Server request timed out. Please try again.');
+            }, 15000);
+        }
+        function handleFormSubmit(e) {
+            showLoadingSpinner('Updating records...');
+        }
+
+        // 🕒 Global Session Timer
+        document.addEventListener('DOMContentLoaded', function() {
+            const expiryTime = parseInt("{{ session.get('session_expiry', 0) * 1000 }}");
+            const timerElement = document.querySelector("#session-timer span");
+            let timerId;
+
+            if (timerElement && expiryTime > 0) {
+                function updateTimer() {
+                    const distance = expiryTime - new Date().getTime();
+                    if (distance <= 0) {
+                        timerElement.innerText = "Expired!";
+                        timerElement.style.color = "#ef4444";
+                        clearInterval(timerId);
+                        showLoadingSpinner('Session expired. Logging out...');
+                        setTimeout(() => window.location.href = "{{ url_for('logout') }}?expired=true", 1000);
+                        return;
+                    }
+                    const mins = Math.floor(distance / 60000);
+                    const secs = Math.floor((distance % 60000) / 1000);
+                    timerElement.innerText = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+                    timerElement.style.color = distance < 300000 ? "#ef4444" : "inherit";
+                }
+                updateTimer();
+                timerId = setInterval(updateTimer, 1000);
+                window.addEventListener('beforeunload', () => clearInterval(timerId));
+            }
+        });
+    </script>
+    
+    <!-- Page-specific Scripts -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>

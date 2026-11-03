@@ -1,470 +1,245 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: All Budgets</title>
-    <!-- FontAwesome Vector Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Font Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+{% extends "base.html" %}
+
+{% block title %}Budget Wisely: All Budgets{% endblock %}
+
+{% block head %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Allbudget.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
-    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Index.css') }}">
+    
+    <!-- Breadcrumb Styling -->
+    <style>
+        .breadcrumb-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .breadcrumb-nav a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        .breadcrumb-nav a:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+        .breadcrumb-nav i {
+            font-size: 0.7rem;
+            color: #cbd5e1;
+        }
+        .breadcrumb-current {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+    </style>
+{% endblock %}
 
-</head>
-<body>
-
-    <!-- Header Navigation -->
-    <header class="header-nav">
-        <div class="home">
-            <a href="{{ url_for('default') }}" class="home-btn" title="Back to Dashboard">
-                <i class="fa-solid fa-house"></i>
-            </a>
-        </div>
-        <div class="nav-title">
-            <h2><i class="fa-solid fa-wallet"></i> Monthly Budget Overview</h2>
-        </div>
-    </header>
-
-    <!-- Flash Messages -->
-    <div class="message">    
-        {% with messages = get_flashed_messages(with_categories=True) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="flash-message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+{% block content %}
+<main class="container">
+    
+    <!-- Breadcrumb Navigation -->
+    <div class="breadcrumb-nav">
+        <a href="{{ url_for('dashboard') }}"><i class="fa-solid fa-house" style="margin-right: 4px;"></i> Dashboard</a>
+        <i class="fa-solid fa-chevron-right"></i>
+        <span class="breadcrumb-current">Yearly Budget Overview</span>
     </div>
 
-    <!-- Main Content Container -->
-    <main class="container">
+    {% if budgets_by_year %}
+        {% for group in budgets_by_year %}
+            <section class="year-header">
+                <div class="year-heading-content">
+                    <h2>
+                        {% if group.is_uncategorized %}<i class="fa-solid fa-folder-open"></i> Uncategorized{% else %}<i class="fa-regular fa-calendar-days"></i> {{ group.label }}{% endif %}
+                    </h2>
+                    <span class="year-subtitle">YEARLY FINANCIAL OVERVIEW</span>
+                </div>
+                <div class="year-divider"></div>
+            </section>
 
-        {% if budgets %}
-            {% set month_order = {
-                'January': 1, 'February': 2, 'March': 3, 'April': 4,
-                'May': 5, 'June': 6, 'July': 7, 'August': 8,
-                'September': 9, 'October': 10, 'November': 11, 'December': 12
-            } %}
-            
-            {% set sorted_budgets = [] %}
-            {% for month_num in range(1, 13) %}
-                {% for budget in budgets %}
-                    {% if month_order[budget.month_name] == month_num %}
-                        {% if sorted_budgets.append(budget) %}{% endif %}
-                    {% endif %}
-                {% endfor %}
-            {% endfor %}
-
-            {% set total_income = sorted_budgets|sum(attribute='monthly_income') %}
-            {% set total_expenses = sorted_budgets|sum(attribute='total_expenses') %}
-            {% set total_savings = total_income - total_expenses %}
-            {% set expenses_percentage = (total_expenses / total_income * 100) if total_income > 0 else 0 %}
-            {% set savings_percentage = (total_savings / total_income * 100) if total_income > 0 else 0 %}
-
-            <!-- Overall Summary Cards -->
             <section class="summary-cards">
                 <div class="summary-card card-income">
-                    <div class="card-header">
-                        <i class="fa-solid fa-arrow-down-left"></i>
-                        <h3>Total Income</h3>
-                    </div>
-                    <p class="positive">₹{{ "%.2f"|format(total_income) }}</p>
+                    <div class="card-header"><span class="emoji-icon" style="font-size: 1.2rem;">💰</span><span class="card-title">Total Income</span></div>
+                    <div class="positive value-display">₹{{ "%.2f"|format(group.total_income) }}</div>
                 </div>
-                
                 <div class="summary-card card-expense">
-                    <div class="card-header">
-                        <i class="fa-solid fa-arrow-up-right"></i>
-                        <h3>Total Expenses</h3>
+                    <div class="card-header"><span class="emoji-icon" style="font-size: 1.2rem;">💸</span><span class="card-title">Total Expenses</span></div>
+                    <div class="{% if group.total_expenses > group.total_income %}negative{% else %}positive{% endif %} value-display">
+                        ₹{{ "%.2f"|format(group.total_expenses) }} <span class="percentage">({{ "%.1f"|format(group.expenses_percentage) }}%)</span>
                     </div>
-                    <p class="{% if total_expenses > total_income %}negative{% else %}positive{% endif %}">
-                        ₹{{ "%.2f"|format(total_expenses) }}
-                        <span class="percentage">({{ "%.1f"|format(expenses_percentage) }}%)</span>
-                    </p>
                 </div>
-                
                 <div class="summary-card card-savings">
-                    <div class="card-header">
-                        <i class="fa-solid fa-piggy-bank"></i>
-                        <h3>Net Savings</h3>
+                    <div class="card-header"><span class="emoji-icon" style="font-size: 1.2rem;">🏦</span><span class="card-title">Net Savings</span></div>
+                    <div class="{% if group.total_savings < 0 %}negative{% else %}positive{% endif %} value-display">
+                        ₹{{ "%.2f"|format(group.total_savings|abs) }} <span class="percentage">({{ "%.1f"|format(group.savings_percentage) }}%)</span>
                     </div>
-                    <p class="{% if total_savings < 0 %}negative{% else %}positive{% endif %} value-display">
-                        ₹{{ "%.2f"|format(total_savings|abs) }}
-                        <span class="percentage">({{ "%.1f"|format(savings_percentage) }}%)</span>
-                    </p>
                 </div>
             </section>
 
-            <!-- Chart Box -->
             <section class="chart-container">
-                <canvas id="budgetChart"></canvas>
+                <canvas id="budgetChart-{{ loop.index }}"></canvas>
             </section>
 
-            <!-- Monthly Cards -->
-            {% for budget in sorted_budgets %}
+            {% for budget in group.budgets %}
                 <div class="budget-box">
                     <div class="budget-box-header">
                         <h3><i class="fa-regular fa-calendar-days"></i> {{ budget.month_name }}</h3>
-                        
-                        <form method="POST" action="/delete_month" class="delete_month" onsubmit="return confirm('Are you sure you want to delete this month?');">
+                        <form method="POST" action="/delete_month" class="delete_month" onsubmit="return confirm('Delete this month?');">
                             <input type="hidden" name="month_name" value="{{ budget.month_name }}">
                             <input type="hidden" name="target_page" value="all_budgets">
-
-                            <button type="submit" class="btn-delete-month" title="Delete Month">
-                                <i class="fa-solid fa-trash-can"></i> Delete Month
-                            </button>
+                            <button type="submit" class="btn-delete-month"><i class="fa-solid fa-trash-can"></i> Delete Month</button>
                         </form>
-                        
                     </div>
-                    
+
                     <div class="summary-cards inner-summary">
-                        <!-- Income Card with Inline Edit Form -->
                         <div class="summary-card">
                             <div class="card-title-action">
                                 <h3>Income</h3>
-                                <!-- Toggle button to open/close inline income form -->
-                                <button type="button" class="action-icon edit-icon" title="Edit Monthly Income" onclick="toggleIncomeForm('income-form-{{ loop.index }}')" style="background: none; border: none; cursor: pointer;">
-                                    <i class="fa-solid fa-pen-to-square"></i>
-                                </button>
+                                <button type="button" class="action-icon" onclick="toggleIncomeForm('income-form-{{ group.label }}-{{ loop.index }}')" style="background: none; border: none; cursor: pointer;"><i class="fa-solid fa-pen-to-square"></i></button>
                             </div>
-
-                            <!-- Inline Edit Monthly Income Form (Hidden by default) -->
-                            <div id="income-form-{{ loop.index }}" class="inline-income-container" style="display: none; margin: 0.5rem 0;">
-                                <form method="POST" action="/edit_income" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <div id="income-form-{{ group.label }}-{{ loop.index }}" style="display: none; margin: 0.5rem 0;">
+                                <form method="POST" action="/edit_income" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                     <input type="hidden" name="month_name" value="{{ budget.month_name }}">
                                     <input type="hidden" name="target_page" value="all_budgets">
-
-                                    <input type="number" 
-                                        name="new_income" 
-                                        step="0.01" 
-                                        value="{{ budget.monthly_income }}" 
-                                        placeholder="{{ budget.monthly_income }}" 
-                                        required 
-                                        class="inline-input" 
-                                        style="width: 120px;">
-                                    
-                                    <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                                        <i class="fa-solid fa-pen"></i> Update
-                                    </button>
-                                    
-                                    <button type="button" class="btn-cancel-expense" onclick="toggleIncomeForm('income-form-{{ loop.index }}')" style="padding: 0.4rem 0.5rem; font-size: 0.85rem;">
-                                        <i class="fa-solid fa-xmark"></i>
-                                    </button>
+                                    <input type="number" name="new_income" step="0.01" value="{{ budget.monthly_income }}" required class="inline-input" style="width: 120px;">
+                                    <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem;"><i class="fa-solid fa-pen"></i> Update</button>
+                                    <button type="button" class="btn-cancel-expense" onclick="toggleIncomeForm('income-form-{{ group.label }}-{{ loop.index }}')"><i class="fa-solid fa-xmark"></i></button>
                                 </form>
                             </div>
-
-                            <!-- Value Display -->
                             <p class="positive value-display">₹{{ "%.2f"|format(budget.monthly_income) }}</p>
                         </div>
-
-                        <!-- Expenses Summary Card -->
                         <div class="summary-card">
                             <h3>Expenses</h3>
-                            <p class="{% if budget.total_expenses > budget.monthly_income %}negative{% else %}positive{% endif %} value-display">
-                                ₹{{ "%.2f"|format(budget.total_expenses) }}
-                                {% if budget.monthly_income > 0 %}
-                                    <span class="percentage">({{ "%.1f"|format((budget.total_expenses/budget.monthly_income)*100) }}%)</span>
-                                {% endif %}
-                            </p>
+                            <p class="{% if budget.total_expenses > budget.monthly_income %}negative{% else %}positive{% endif %} value-display">₹{{ "%.2f"|format(budget.total_expenses) }}</p>
                         </div>
-
-                        <!-- Savings Card -->
                         <div class="summary-card">
                             <h3>Savings</h3>
-                            <p class="{% if budget.savings < 0 %}negative{% else %}positive{% endif %} value-display">
-                                ₹{{ "%.2f"|format(budget.savings|abs) }}
-                                {% if budget.monthly_income > 0 %}
-                                    <span class="percentage">({{ "%.1f"|format(budget.savings_percentage) }}%)</span>
-                                {% endif %}
-                            </p>
+                            <p class="{% if budget.savings < 0 %}negative{% else %}positive{% endif %} value-display">₹{{ "%.2f"|format(budget.savings|abs) }}</p>
                         </div>
                     </div>
 
-                    <!-- Expense Section -->
                     <div class="expenses" style="margin-bottom: 20px !important;">
                         <div class="expense-header">
                             <strong><i class="fa-solid fa-list-check"></i> Expense Breakdown</strong>
-                            <button type="button" class="btn-add-expense" onclick="toggleExpenseForm('form-{{ loop.index }}')">
-                                <i class="fa-solid fa-plus"></i> Add
-                            </button>
+                            <button type="button" class="btn-add-expense" onclick="toggleExpenseForm('form-{{ group.label }}-{{ loop.index }}')"><i class="fa-solid fa-plus"></i> Add</button>
                         </div>
-
-                        <!-- Inline Add Expense Form Container -->
-                        <div id="form-{{ loop.index }}" class="add-expense-form-container" style="display: none;">
+                        <div id="form-{{ group.label }}-{{ loop.index }}" class="add-expense-form-container" style="display: none;">
                             <form method="POST" action="/add_data" class="inline-add-form">
                                 <input type="hidden" name="month_name" value="{{ budget.month_name }}">
                                 <input type="hidden" name="target_page" value="all_budgets">
-                                
                                 <div class="form-inputs">
-                                    <div class="input-group">
-                                        <label>Category</label>
-                                        <input type="text" name="exp_category" placeholder="e.g., Groceries" required>
-                                    </div>
-                                    <div class="input-group">
-                                        <label>Amount (₹)</label>
-                                        <input type="number" step="0.01" name="exp_amount" placeholder="0.00" required>
-                                    </div>
-                                    <div class="input-group">
-                                        <label>Date</label>
-                                        <input type="date" name="exp_date" required>
-                                    </div>
+                                    <div class="input-group"><label>Category</label><input type="text" name="exp_category" required></div>
+                                    <div class="input-group"><label>Amount (₹)</label><input type="number" step="0.01" name="exp_amount" required></div>
+                                    <div class="input-group"><label>Date</label><input type="date" name="exp_date" required></div>
                                 </div>
-                                
                                 <div class="form-actions">
-                                    <button type="submit" class="btn-submit-expense"><i class="fa-solid fa-check"></i> Save Expense</button>
-                                    <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('form-{{ loop.index }}')">Cancel</button>
+                                    <button type="submit" class="btn-submit-expense"><i class="fa-solid fa-check"></i> Save</button>
+                                    <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('form-{{ group.label }}-{{ loop.index }}')">Cancel</button>
                                 </div>
                             </form>
                         </div>
 
-                <!-- Editable Expense Item Table with Delete Actions -->
-                <div class="expense-details">
-                    <h3 style="margin-top: 0; font-size: 1.05rem;"><i class="fa-solid fa-list-check"></i> Expense Details & Adjustments</h3>
-                    {% if budget.expenses %}
-                    <div style="overflow-x: auto;">
-                        <table class="expense-table">
-                            <thead>
-                                <tr>
-                                    <th>Category</th>
-                                    <th>Amount</th>
-                                    <th>Distribution</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                                <tbody>
-                                    {% for expense in budget.expenses %}
-                                    <!-- 1. Normal Expense Display Row -->
-                                    <tr>
-                                        <td>{{ expense.expense_category if expense.expense_category else expense.category }}</td>
-                                        <td>₹{{ "%.2f"|format(expense.expense_amount if expense.expense_amount else expense.amount) }}</td>
-                                        <td>
-                                            <span class="percentage">
-                                                {{ "%.1f"|format(((expense.expense_amount if expense.expense_amount else expense.amount) / budget.monthly_income) * 100 if budget.monthly_income > 0 else 0) }}% of Income
-                                            </span>
-                                        </td>
-                                        <td style="color: var(--text-muted); font-size: 0.85rem;">
-                                            {{ expense.day_name if expense.day_name else expense.dayname }} {{ expense.date }}
-                                        </td>
-                                        <td>
-                                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                                <!-- Pencil Button: Toggles the inline edit form below -->
-                                                <button type="button" class="icon-btn" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" title="Edit Expense">
-                                                    <i class="fa-solid fa-pen"></i>
-                                                </button>
-
-                                                <!-- Delete Form -->
-                                                <form method="POST" action="/delete_expense" onsubmit="confirmDeleteExpense('{{ expense.id }}', '{{ expense.month_name }}'); return false;" style="display: inline;">
+                        <div class="expense-details">
+                            <h3 style="margin-top: 0; font-size: 1.05rem;"><i class="fa-solid fa-list-check"></i> Details</h3>
+                            {% if budget.expenses %}
+                            <div style="overflow-x: auto;">
+                                <table class="expense-table">
+                                    <thead><tr><th>Category</th><th>Amount</th><th>Distribution</th><th>Date</th><th>Actions</th></tr></thead>
+                                    <tbody>
+                                        {% for expense in budget.expenses %}
+                                        <tr>
+                                            <td>{{ expense.expense_category if expense.expense_category else expense.category }}</td>
+                                            <td>₹{{ "%.2f"|format(expense.expense_amount if expense.expense_amount else expense.amount) }}</td>
+                                            <td><span class="percentage">{{ "%.1f"|format(((expense.expense_amount if expense.expense_amount else expense.amount) / budget.monthly_income) * 100 if budget.monthly_income > 0 else 0) }}%</span></td>
+                                            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ expense.day_name if expense.day_name else expense.dayname }} {{ expense.date }}</td>
+                                            <td>
+                                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                                    <button type="button" class="icon-btn" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')"><i class="fa-solid fa-pen"></i></button>
+                                                    <form method="POST" action="/delete_expense" onsubmit="confirmDeleteExpense('{{ expense.id }}', '{{ expense.month_name }}'); return false;" style="display: inline;">
+                                                        <input type="hidden" name="expense_id" value="{{ expense.id }}">
+                                                        <input type="hidden" name="target_page" value="all_budgets">
+                                                        <button type="submit" class="icon-btn"><i class="fa-solid fa-trash-can" style="color: var(--danger);"></i></button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
+                                            <td colspan="5">
+                                                <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
                                                     <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                                     <input type="hidden" name="target_page" value="all_budgets">
-                                                    <button type="submit" class="icon-btn" title="Delete Expense">
-                                                        <i class="fa-solid fa-trash-can" style="color: var(--danger);"></i>
-                                                    </button>
+                                                    <input type="text" name="category" value="{{ expense.expense_category if expense.expense_category else expense.category }}" required class="inline-input" style="width: 140px;">
+                                                    <input type="number" step="0.01" name="amount" value="{{ expense.expense_amount if expense.expense_amount else expense.amount }}" required class="inline-input" style="width: 100px;">
+                                                    <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem;"><i class="fa-solid fa-check"></i> Save</button>
+                                                    <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')"><i class="fa-solid fa-xmark"></i></button>
                                                 </form>
-
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                    <!-- 2. Hidden Inline Edit Form Row (Opens directly below on pencil click) -->
-                                    <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
-                                        <td colspan="5">
-                                            <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
-                                                <!-- Hidden Expense ID -->
-                                                <input type="hidden" name="expense_id" value="{{ expense.id }}">
-                                                <input type="hidden" name="target_page" value="all_budgets">
-
-                                                <!-- Category Field -->
-                                                <label style="font-size: 0.85rem; font-weight: 600;">Category:</label>
-                                                <input type="text" name="category" value="{{ expense.expense_category if expense.expense_category else expense.category }}" required class="inline-input" style="width: 140px;">
-
-                                                <!-- Amount Field -->
-                                                <label style="font-size: 0.85rem; font-weight: 600;">Amount (₹):</label>
-                                                <input type="number" step="0.01" name="amount" value="{{ expense.expense_amount if expense.expense_amount else expense.amount }}" required class="inline-input" style="width: 100px;">
-
-                                                <!-- Actions -->
-                                                <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;">
-                                                    <i class="fa-solid fa-check"></i> Save
-                                                </button>
-                                                <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;">
-                                                    <i class="fa-solid fa-xmark"></i>
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                        </table>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">No expenses logged yet.</p>
+                            {% endif %}
+                            <p class="small-text"><i class="fa-solid fa-arrows-rotate"></i> Last updated: {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
+                        </div>
                     </div>
-                    {% else %}
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">No detailed expenses logged yet.</p>
-                    {% endif %}
-
-                    <p class="small-text"><i class="fa-solid fa-arrows-rotate"></i> Last updated: {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
-                    </div> <!-- Closes .expense-details -->
-                </div> <!-- Closes .expenses -->
-            </div> <!-- Closes .budget-box -->
+                </div>
+            {% endfor %}
         {% endfor %}
     {% else %}
         <div class="no-data">
             <i class="fa-solid fa-folder-open empty-icon"></i>
             <p>No budget data found. Please add your first budget.</p>
+            <a href="{{ url_for('dashboard') }}" class="btn-primary" style="margin-top: 1rem; display: inline-block;"><i class="fa-solid fa-plus"></i> Add Budget</a>
         </div>
     {% endif %}
+</main>
+{% endblock %}
 
-    </main>
-
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 2026 Budget Wisely (Monthly Budget Calculator). All Rights Reserved.</p>
-    </footer>
-
+{% block scripts %}
 <script>
+    function toggleExpenseForm(formId) { const form = document.getElementById(formId); if (form) form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none"; }
+    function toggleIncomeForm(formId) { const form = document.getElementById(formId); if (form) form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none"; }
 
-// Inline Toggle Helper
-function toggleExpenseForm(formId) {
-    const form = document.getElementById(formId);
-    if (form.style.display === "none" || form.style.display === "") {
-        form.style.display = "block";
-    } else {
-        form.style.display = "none";
-    }
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-    {% if budgets %}
-    const ctx = document.getElementById("budgetChart").getContext("2d");
-    
-    const monthOrder = {
-        'January': 1, 'February': 2, 'March': 3, 'April': 4,
-        'May': 5, 'June': 6, 'July': 7, 'August': 8,
-        'September': 9, 'October': 10, 'November': 11, 'December': 12
+    const monthSeparatorPlugin = {
+        id: 'monthSeparator',
+        beforeDraw(chart) {
+            if (!chart.chartArea || !chart.scales.x) return;
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            for (let i = 0; i < x.ticks.length - 1; i++) {
+                const midX = (x.getPixelForTick(i) + x.getPixelForTick(i + 1)) / 2;
+                ctx.save(); ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.moveTo(midX, top); ctx.lineTo(midX, bottom); ctx.stroke(); ctx.restore();
+            }
+        }
     };
-    
-    const budgetData = {{ budgets | tojson }};
-    
-    const sortedData = [...budgetData].sort((a, b) => {
-        return monthOrder[a.month_name] - monthOrder[b.month_name];
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const groups = {{ budgets_by_year | tojson }};
+        if (!Array.isArray(groups) || groups.length === 0) return;
+        groups.forEach((group, idx) => {
+            const canvas = document.getElementById(`budgetChart-${idx + 1}`);
+            if (!canvas || !Array.isArray(group.budgets)) return;
+            const series = [...group.budgets].reverse();
+            new Chart(canvas.getContext("2d"), {
+                type: "bar",
+                data: {
+                    labels: series.map(b => b.month_word || b.month_name),
+                    datasets: [
+                        { label: "Income", data: series.map(b => Number(b.monthly_income) || 0), backgroundColor: "#4F46E5", borderRadius: 4 },
+                        { label: "Expenses", data: series.map(b => Number(b.total_expenses) || 0), backgroundColor: "#EF4444", borderRadius: 4 },
+                        { label: "Savings", data: series.map(b => Number(b.savings) || 0), backgroundColor: series.map(b => b.savings < 0 ? "#EF4444" : "#10B981"), borderRadius: 4 }
+                    ]
+                },
+                plugins: [monthSeparatorPlugin],
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: `${group.label} Trend` } }, scales: { y: { beginAtZero: true } } }
+            });
+        });
     });
-    
-    const months = sortedData.map(budget => budget.month_name);
-    const incomeData = sortedData.map(budget => budget.monthly_income);
-    const expensesData = sortedData.map(budget => budget.total_expenses);
-    const savingsData = sortedData.map(budget => budget.savings);
-
-// Custom Plugin for Darker Solid Separator Lines
-const monthSeparatorPlugin = {
-    id: 'monthSeparator',
-    beforeDraw(chart) {
-        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-        
-        for (let i = 0; i < x.ticks.length - 1; i++) {
-            const currentX = x.getPixelForTick(i);
-            const nextX = x.getPixelForTick(i + 1);
-            const midX = (currentX + nextX) / 2;
-            
-            ctx.save();
-            ctx.beginPath();
-            ctx.strokeStyle = '#94a3b8'; // Darker grey line matching the image
-            ctx.lineWidth = 1;           // Clean thin line
-            ctx.moveTo(midX, top);
-            ctx.lineTo(midX, bottom);
-            ctx.stroke();
-            ctx.restore();
-        }
-    }
-};
-
-new Chart(ctx, {
-    type: "bar",
-    data: {
-        labels: months,
-        datasets: [
-            {
-                label: "Income",
-                data: incomeData,
-                backgroundColor: "#4F46E5", // Darker vibrant blue
-                borderColor: "#4338CA",
-                borderWidth: 1,
-                borderRadius: 4
-            },
-            {
-                label: "Expenses",
-                data: expensesData,
-                backgroundColor: "#EF4444", // Solid coral red
-                borderColor: "#DC2626",
-                borderWidth: 1,
-                borderRadius: 4
-            },
-            {
-                label: "Savings",
-                data: savingsData,
-                backgroundColor: savingsData.map(value => 
-                    value < 0 ? "#EF4444" : "#10B981"), // Solid Red if negative, Vibrant Green if positive
-                borderColor: savingsData.map(value => 
-                    value < 0 ? "#DC2626" : "#059669"),
-                borderWidth: 1,
-                borderRadius: 4
-            }
-        ]
-    },
-    plugins: [monthSeparatorPlugin],
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            title: {
-                display: true,
-                text: 'Yearly Financial Trend',
-                font: { size: 18, family: "'Inter', sans-serif", weight: 'bold' },
-                color: '#0f172a'
-            },
-            legend: {
-                labels: {
-                    usePointStyle: false,
-                    boxWidth: 20,
-                    boxHeight: 12,
-                    font: { weight: 'bold' }
-                }
-            }
-        },
-        scales: {
-            y: {
-                grid: { color: '#e2e8f0' },
-                ticks: {
-                    color: '#64748b',
-                    callback: function(value) { return '₹' + value; }
-                }
-            },
-            x: {
-                grid: { display: false },
-                ticks: {
-                    color: '#334155',
-                    font: { weight: '600' }
-                }
-            }
-        }
-    }
-});
-{% endif %}
-});
-    </script>
-    <script>
-    function toggleIncomeForm(formId) {
-    const form = document.getElementById(formId);
-    if (form.style.display === "none" || form.style.display === "") {
-        form.style.display = "block";
-    } else {
-        form.style.display = "none";
-        }
-    }
 </script>
-</body>
-</html>
+{% endblock %}

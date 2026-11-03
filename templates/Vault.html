@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}My Vault{% endblock %}
+
+{% block content %}
+<div class="all" style="justify-content: center; display: flex; padding-top: 0; padding-bottom: 0;">
+    <div class="results" style="max-width: 800px; width: 100%; margin: 0 auto;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2 class="section-title" style="margin: 0;"><i class="fa-solid fa-lock"></i> My Vault</h2>
+            {% if is_unlocked %}
+                <a href="{{ url_for('vault_lock') }}" class="btn-danger" style="text-decoration: none; padding: 0.5rem 1rem;"><i class="fa-solid fa-lock"></i> Lock Vault</a>
+            {% endif %}
+        </div>
+
+        {% if not is_unlocked %}
+            <!-- LOCKED STATE -->
+            <div class="calculator" style="max-width: 400px; margin: 0 auto; text-align: center;">
+                <i class="fa-solid fa-lock" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                <h3>Vault Locked</h3>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Enter your Vault PIN to view your secrets.</p>
+                <form method="POST" onsubmit="handleFormSubmit(event)">
+                    <input type="password" name="pin" required placeholder="Enter Vault PIN" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 1rem; text-align: center; font-size: 1.2rem; box-sizing: border-box;">
+                    <button type="submit" class="btn-primary" style="width: 100%;">Unlock</button>
+                </form>
+            </div>
+        {% else %}
+            <!-- UNLOCKED STATE -->
+            <div class="calculator" style="margin-bottom: 2rem;">
+                <h3 style="margin-top: 0;"><i class="fa-solid fa-plus"></i> Add New Secret</h3>
+                <form method="POST" action="{{ url_for('vault_add') }}" onsubmit="handleFormSubmit(event)">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" name="title" required placeholder="e.g., WiFi Password, Bank Info">
+                    </div>
+                    <div class="form-group">
+                        <label>Secret Text</label>
+                        <textarea name="secret_text" required rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; box-sizing: border-box;" placeholder="Paste your secret here..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-save"></i> Save to Vault</button>
+                </form>
+            </div>
+
+            <h3>Saved Secrets</h3>
+            {% if items %}
+                {% for item in items %}
+                <div class="summary-card" style="margin-bottom: 1rem; text-align: left; padding: 1.25rem;">
+                    
+                    <!-- Title & Action Buttons -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <strong style="font-size: 1.1rem; color: var(--text-main);">{{ item.title }}</strong>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="icon-btn" onclick="toggleVaultEdit('edit-{{ item.id }}')" title="Edit Secret" style="color: var(--primary);">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <a href="{{ url_for('vault_delete', item_id=item.id) }}" class="icon-btn" onclick="return confirm('Delete this secret?');" title="Delete Secret">
+                                <i class="fa-solid fa-trash-can" style="color: var(--danger);"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Secret Display -->
+                    <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-family: monospace; white-space: pre-wrap; word-wrap: break-word;">{{ item.secret_text }}</div>
+                    
+                    <!-- Timestamps (IST) -->
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                        <span><i class="fa-regular fa-clock"></i> Added: {{ item.created_ist }} (IST)</span>
+                        {% if item.updated_ist %}
+                        <span style="color: var(--primary);"><i class="fa-solid fa-rotate-right"></i> Updated: {{ item.updated_ist }} (IST)</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Hidden Inline Edit Form -->
+                    <div id="edit-{{ item.id }}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border);">
+                        <form method="POST" action="{{ url_for('vault_edit', item_id=item.id) }}" onsubmit="handleFormSubmit(event)">
+                            <div class="form-group">
+                                <label style="font-size: 0.85rem;">Edit Title</label>
+                                <input type="text" name="title" value="{{ item.title }}" required style="padding: 0.5rem; font-size: 0.9rem;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 0.85rem;">Edit Secret</label>
+                                <textarea name="secret_text" required rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: monospace; font-size: 0.9rem; box-sizing: border-box;">{{ item.secret_text }}</textarea>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button type="button" class="btn-cancel-expense" onclick="toggleVaultEdit('edit-{{ item.id }}')" style="padding: 0.4rem 0.75rem;">Cancel</button>
+                                <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; width: auto;"><i class="fa-solid fa-check"></i> Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">
+                    <i class="fa-solid fa-folder-open empty-icon"></i>
+                    <p>No secrets saved yet. Add your first one above!</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleVaultEdit(formId) {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none";
+        }
+    }
+</script>
+{% endblock %}

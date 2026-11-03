@@ -1,137 +1,140 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely | About Us</title>
-    <!-- Fonts & FontAwesome Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Aboutus.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
-</head>
-<body>
+{% extends "default_base.html" %}
 
-    <!-- Modern Header Navbar -->
-    <header>
-        <div class="header-content">
-            <a href="{{ url_for('default') }}" class="back-link" title="Return Home">
-                <i class="fa-solid fa-arrow-left"></i>
-                <span>Home</span>
-            </a>
-            <h2><i class="fa-solid fa-circle-info header-icon"></i> About Us</h2>
+{% block title %}About Us | Budget Wisely{% endblock %}
+
+{% block auth_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Aboutus.css') }}">
+<style>
+    /* Override old styles to protect the new header */
+    header:not(.navbar) { display: none !important; } 
+    
+    /* Scope old CSS to the wrapper only */
+    .about-wrapper .hero-section { background: #EEF2FF; padding: 4rem 2rem; text-align: center; border-radius: 12px; margin-bottom: 2rem; }
+    .about-wrapper .hero-badge { background: #C7D2FE; color: #4F46E5; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 600; display: inline-block; margin-bottom: 1.5rem; }
+    .about-wrapper h1 { font-size: 2.5rem; color: #0F172A; margin-bottom: 1rem; }
+    .about-wrapper .hero-text { font-size: 1.1rem; color: #64748B; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+    .about-wrapper .section { margin-bottom: 3rem; }
+    .about-wrapper .section-title { font-size: 1.8rem; color: #0F172A; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; }
+    .about-wrapper .mission-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 4px solid #4F46E5; display: flex; gap: 2rem; align-items: flex-start; }
+    .about-wrapper .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+    .about-wrapper .feature-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; border: 1px solid #E2E8F0; }
+    .about-wrapper .feature-icon { font-size: 2.5rem; color: #4F46E5; margin-bottom: 1rem; }
+    .about-wrapper .benefits-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .about-wrapper .benefit-item { background: white; padding: 1.5rem; border-radius: 12px; display: flex; gap: 1rem; align-items: flex-start; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .about-wrapper .benefit-item i { color: #10B981; font-size: 1.5rem; margin-top: 0.2rem; }
+    .about-wrapper .team-members { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+    .about-wrapper .team-member { background: white; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; }
+    .about-wrapper .avatar-icon { width: 80px; height: 80px; background: #EEF2FF; color: #4F46E5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container about-wrapper" style="padding: 2rem 1rem; max-width: 1200px; margin: 0 auto; width: 100%;">
+    
+    <section class="hero-section">
+        <div class="hero-badge"><i class="fa-solid fa-heart-pulse"></i> Your Personal Finance Companion</div>
+        <h1>Empowering Your Financial Journey</h1>
+        <p class="hero-text">
+            At <strong>Budget Wisely</strong>, we believe that managing your finances shouldn't feel overwhelming. We provide the tools, clarity, and support you need to track your income, monitor expenses, and gain full control over your financial health.
+        </p>
+    </section>
+
+    <section class="section mission-card">
+        <div class="section-icon-wrapper" style="background: #EEF2FF; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #4F46E5; flex-shrink: 0;">
+            <i class="fa-solid fa-bullseye"></i>
         </div>
-    </header>
-
-    <div class="container">
-        <!-- Hero Introduction Section -->
-        <section class="hero-section">
-            <div class="hero-badge"><i class="fa-solid fa-heart-pulse"></i> Your Personal Finance Companion</div>
-            <h1>Empowering Your Financial Journey</h1>
-            <p class="hero-text">
-                At <strong>Budget Wisely</strong>, we believe that managing your finances shouldn't feel overwhelming. We provide the tools, clarity, and support you need to track your income, monitor expenses, and gain full control over your financial health.
+        <div class="section-text">
+            <h2 style="margin-top: 0; color: #0F172A;">Our Mission</h2>
+            <p style="color: #64748B; line-height: 1.6; margin: 0;">
+                Our mission at BudgetWisely.com is to democratize financial literacy and enable everyone to make informed, data-driven decisions. We build intuitive tools to make budgeting seamless, accessible, and stress-free for everyone.
             </p>
-        </section>
+        </div>
+    </section>
 
-        <!-- Mission Statement -->
-        <section class="section mission-card">
-            <div class="section-icon-wrapper">
-                <i class="fa-solid fa-bullseye"></i>
+    <!-- What We Offer -->
+    <section class="section">
+        <h2 class="section-title"><i class="fa-solid fa-cubes"></i> What We Offer</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <i class="fa-solid fa-wallet feature-icon"></i>
+                <h3 style="color: #0F172A; margin-bottom: 0.5rem;">Monthly Budgeting</h3>
+                <p style="color: #64748B; font-size: 0.95rem;">Set your monthly income allocations and track allocations across categories effortlessly.</p>
             </div>
-            <div class="section-text">
-                <h2>Our Mission</h2>
-                <p>
-                    Our mission at BudgetWisely.com is to democratize financial literacy and enable everyone to make informed, data-driven decisions. We build intuitive tools to make budgeting seamless, accessible, and stress-free for everyone.
-                </p>
+            <div class="feature-card">
+                <i class="fa-solid fa-receipt feature-icon"></i>
+                <h3 style="color: #0F172A; margin-bottom: 0.5rem;">Expense Tracking</h3>
+                <p style="color: #64748B; font-size: 0.95rem;">Log daily transactions and categorize spending patterns in real-time.</p>
             </div>
-        </section>
-
-        <!-- What We Offer -->
-        <section class="section">
-            <h2 class="section-title"><i class="fa-solid fa-cubes"></i> What We Offer</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <i class="fa-solid fa-wallet feature-icon"></i>
-                    <h3>Monthly Budgeting</h3>
-                    <p>Set your monthly income allocations and track allocations across categories effortlessly.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fa-solid fa-receipt feature-icon"></i>
-                    <h3>Expense Tracking</h3>
-                    <p>Log daily transactions and categorize spending patterns in real-time.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fa-solid fa-chart-pie feature-icon"></i>
-                    <h3>Visual Analytics</h3>
-                    <p>Gain actionable insights with clear, interactive charts and percentage distribution breakdowns.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="fa-solid fa-lightbulb feature-icon"></i>
-                    <h3>Personalized Insights</h3>
-                    <p>Identify savings opportunities and optimize spending choices every month.</p>
-                </div>
+            <div class="feature-card">
+                <i class="fa-solid fa-chart-pie feature-icon"></i>
+                <h3 style="color: #0F172A; margin-bottom: 0.5rem;">Visual Analytics</h3>
+                <p style="color: #64748B; font-size: 0.95rem;">Gain actionable insights with clear, interactive charts and percentage distribution breakdowns.</p>
             </div>
-        </section>
-
-        <!-- Why Choose Us -->
-        <section class="section">
-            <h2 class="section-title"><i class="fa-solid fa-shield-halved"></i> Why Choose Budget Wisely?</h2>
-            <div class="benefits-grid">
-                <div class="benefit-item">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>
-                        <strong>Simple & Intuitive:</strong> Designed with clean visual hierarchies for quick navigation.
-                    </div>
-                </div>
-                <div class="benefit-item">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>
-                        <strong>Fully Customizable:</strong> Flexible fields tailored to match your specific financial goals.
-                    </div>
-                </div>
-                <div class="benefit-item">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>
-                        <strong>Data-Driven Precision:</strong> Accurate calculations ensuring every cent is accounted for.
-                    </div>
-                </div>
-                <div class="benefit-item">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>
-                        <strong>Accessible Everywhere:</strong> Responsive architecture optimized for desktop, tablet, and mobile browsers.
-                    </div>
+            <div class="feature-card">
+                <i class="fa-solid fa-lightbulb feature-icon"></i>
+                <h3 style="color: #0F172A; margin-bottom: 0.5rem;">Personalized Insights</h3>
+                <p style="color: #64748B; font-size: 0.95rem;">Identify savings opportunities and optimize spending choices every month.</p>
+            </div>
+            
+            <!-- 👈 NEW VAULT FEATURE -->
+            <div class="feature-card">
+                <i class="fa-solid fa-lock feature-icon"></i>
+                <h3 style="color: #0F172A; margin-bottom: 0.5rem;">Secure Vault</h3>
+                <p style="color: #64748B; font-size: 0.95rem;">Store sensitive financial documents, PINs, and notes behind a secure secondary PIN.</p>
+            </div>
+        </div>
+    </section>
+    
+    <section class="section">
+        <h2 class="section-title"><i class="fa-solid fa-shield-halved"></i> Why Choose Budget Wisely?</h2>
+        <div class="benefits-grid">
+            <div class="benefit-item">
+                <i class="fa-solid fa-circle-check"></i>
+                <div style="color: #334155;">
+                    <strong style="color: #0F172A;">Simple & Intuitive:</strong> Designed with clean visual hierarchies for quick navigation.
                 </div>
             </div>
-        </section>
-
-        <!-- Team Section -->
-        <section class="section">
-            <h2 class="section-title"><i class="fa-solid fa-users"></i> Meet Our Team</h2>
-            <div class="team-members">
-                <div class="team-member">
-                    <div class="avatar-icon">
-                        <i class="fa-solid fa-code"></i>
-                    </div>
-                    <h3>Developer</h3>
-                    <strong>AJAY KUMAR SAH</strong>
-                    <p>Passionate about crafting robust, responsive web applications and reliable logic.</p>
-                </div>
-                <div class="team-member">
-                    <div class="avatar-icon">
-                        <i class="fa-solid fa-pen-nib"></i>
-                    </div>
-                    <h3>UI/UX Designer</h3>
-                    <strong>AJAY KUMAR SAH</strong>
-                    <p>Focused on constructing elegant, clean interfaces with frictionless user experiences.</p>
+            <div class="benefit-item">
+                <i class="fa-solid fa-circle-check"></i>
+                <div style="color: #334155;">
+                    <strong style="color: #0F172A;">Fully Customizable:</strong> Flexible fields tailored to match your specific financial goals.
                 </div>
             </div>
-        </section>
-    </div>
+            <div class="benefit-item">
+                <i class="fa-solid fa-circle-check"></i>
+                <div style="color: #334155;">
+                    <strong style="color: #0F172A;">Data-Driven Precision:</strong> Accurate calculations ensuring every cent is accounted for.
+                </div>
+            </div>
+            <div class="benefit-item">
+                <i class="fa-solid fa-circle-check"></i>
+                <div style="color: #334155;">
+                    <strong style="color: #0F172A;">Accessible Everywhere:</strong> Responsive architecture optimized for desktop, tablet, and mobile browsers.
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 2026 Budget Wisely (Monthly Budget Calculator). All Rights Reserved.</p>
-    </footer>
-
-</body>
-</html>
+    <section class="section">
+        <h2 class="section-title"><i class="fa-solid fa-users"></i> Meet Our Team</h2>
+        <div class="team-members">
+            <div class="team-member">
+                <div class="avatar-icon">
+                    <i class="fa-solid fa-code"></i>
+                </div>
+                <h3 style="margin: 0 0 0.2rem 0; color: #64748B; font-size: 1rem; font-weight: 500;">Developer</h3>
+                <strong style="display: block; font-size: 1.2rem; color: #0F172A; margin-bottom: 1rem;">AJAY KUMAR SAH</strong>
+                <p style="color: #64748B; font-size: 0.95rem; margin: 0;">Passionate about crafting robust, responsive web applications and reliable logic.</p>
+            </div>
+            <div class="team-member">
+                <div class="avatar-icon">
+                    <i class="fa-solid fa-pen-nib"></i>
+                </div>
+                <h3 style="margin: 0 0 0.2rem 0; color: #64748B; font-size: 1rem; font-weight: 500;">UI/UX Designer</h3>
+                <strong style="display: block; font-size: 1.2rem; color: #0F172A; margin-bottom: 1rem;">AJAY KUMAR SAH</strong>
+                <p style="color: #64748B; font-size: 0.95rem; margin: 0;">Focused on constructing elegant, clean interfaces with frictionless user experiences.</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

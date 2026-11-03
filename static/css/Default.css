@@ -37,7 +37,7 @@ body {
 .nav-container {
     max-width: 1280px;
     margin: 0 auto;
-    padding: 0.8rem 2rem;
+    padding: 0.8rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -456,17 +456,13 @@ body {
 
 .footer-container {
     max-width: 1200px;
-    margin: 0 auto;
     display: grid;
     grid-template-columns: 2fr repeat(3, 1fr);
     gap: 3rem;
-    margin-bottom: 3rem;
-        align-items: baseline !important;
-
+    align-items: left !important;
 }
 
 .footer-location {
-    margin-top: 0.8rem;
     font-size: 0.9rem;
     color: #94A3B8;
     display: flex;
@@ -492,6 +488,8 @@ body {
     color: white;
     margin-bottom: 1.2rem;
     font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .footer-col a {
@@ -513,7 +511,7 @@ max-width: 350px;
 .footer-bottom {
     max-width: 1200px;
     margin: 0 auto;
-    padding-top: 2rem;
+    padding-top: 1rem;
     border-top: 1px solid #334155;
     text-align: center;
     font-size: 0.85rem;
@@ -527,7 +525,11 @@ max-width: 350px;
 html, body {
     max-width: 100% !important;
 }
-
+.nav-btn-outline:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+    border-color: #475569 !important;
+}
 /* --- Responsive Adjustments (Strict Single-Column & No Scroll) --- */
 /* --- Responsive Adjustments (Strict Single-Column & Alignment Fixes) --- */
 @media (max-width: 992px) {
@@ -555,16 +557,16 @@ html, body {
         position: absolute;
         top: 100%;
         left: 0;
-        width: 100%; /* Prevents horizontal overflow */
-        background-color: #f0f0f0;
+        width: 100%;
+        background-color: #1e293b; /* 👈 DARK BACKGROUND */
         flex-direction: column;
         gap: 1.5rem;
         padding: 0;
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        border-bottom: 1px solid #E2E8F0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid #334155; /* 👈 DARK BORDER */
         box-sizing: border-box;
     }
 
@@ -596,9 +598,20 @@ html, body {
 
     .nav-auth .nav-btn {
         width: 100%;
-        text-align: center;
+        text-align: center !important;
         box-sizing: border-box;
-        text-align: left !important;
+        padding: 0.8rem;
+    }
+    
+    .nav-btn-outline {
+        border-color: #475569;
+        color: #ffffff;
+    }
+    
+    /* Fix for the hover state on mobile */
+    .nav-btn-outline:hover {
+        background-color: #334155;
+        color: #ffffff;
     }
 
     /* HERO SECTION & CTA: Center Aligned */
@@ -650,7 +663,7 @@ html, body {
         box-sizing: border-box;
     }
     .footer-location {
-        justify-content: center;
+        justify-content: left !important;
     }
 
     /* Chart Canvas Layout Fix */
@@ -706,7 +719,6 @@ html, body {
 
     /* Footer Centering for Single Column */
     .footer-col {
-        text-align: center;
         width: 100%;
     }
 
@@ -719,5 +731,17 @@ html, body {
 @media (max-width: 480px) {
     .canvas-wrapper {
         height: 210px;
+    }
+}
+
+/* Make Footer single column on mobile phones */
+@media (max-width: 600px) {
+    .footer-container {
+        grid-template-columns: repeat(1, 1fr) !important; /* Stacks everything vertically */
+        gap: 1.5rem;
+        text-align: center !important;
+    }
+    .footer-location {
+        justify-content: center !important;
     }
 }

@@ -20,13 +20,39 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--bg-body);
     color: var(--text-dark);
     line-height: 1.5;
+}
+
+/* The page content wrapper must grow so the footer is pushed down */
+.container {
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px 16px;
+    flex: 1;                              /* ← key line */
+}
+
+footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: auto !important;          /* now actually works */
+    border-top: 1px solid var(--border-color);   /* ← fixed var name */
+    background-color: var(--bg-body);
 }
 
 /* Header Navigation */
@@ -81,6 +107,90 @@ body {
     padding: 24px 16px;
 }
 
+/* =========================================
+   YEAR SECTION HEADING
+========================================= */
+
+.year-header {
+    width: 100%;
+    margin: 2.5rem 0 1.8rem;
+    text-align: center;
+}
+
+.year-heading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+}
+
+.year-subtitle {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.year-header h2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+}
+
+.year-header h2 i {
+    color: #2563eb;
+    font-size: 1.45rem;
+}
+
+/* Horizontal separator */
+
+.year-divider {
+    width: 100%;
+    height: 1px;
+    margin-top: 1.5rem;
+    background: linear-gradient(
+        to right,
+        transparent,
+        #cbd5e1 15%,
+        #94a3b8 50%,
+        #cbd5e1 85%,
+        transparent
+    );
+}
+
+/* Mobile Responsive */
+
+@media (max-width: 600px) {
+
+    .year-header {
+        margin: 1.8rem 0 1.3rem;
+    }
+
+    .year-subtitle {
+        font-size: 0.68rem;
+        letter-spacing: 1.5px;
+    }
+
+    .year-header h2 {
+        font-size: 1.45rem;
+    }
+
+    .year-header h2 i {
+        font-size: 1.2rem;
+    }
+
+    .year-divider {
+        margin-top: 1.1rem;
+    }
+}
+
 /* Summary Cards */
 .summary-cards {
     display: grid;
@@ -100,12 +210,56 @@ body {
 
 .card-header {
     display: flex;
-    align-items: center;
+    align-items: center !important;
     gap: 8px;
     margin-bottom: 8px;
 }
 
-.card-header i { font-size: 1.1rem; }
+/* Target the new card title span */
+.card-header .card-title {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    line-height: 1; /* Aligns perfectly with the emoji */
+    display: flex;
+    align-items: center;
+}
+
+/* Ensure the emoji doesn't have weird spacing */
+.card-header .emoji-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin: 0;
+}
+
+/* Force icons to display and never shrink */
+.card-header i { 
+    display: inline-block !important; 
+    font-size: 1.1rem; 
+    flex-shrink: 0;
+}
+
+/* Restore the large font size for the money amounts */
+.value-display {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* Keep the inner (monthly) cards slightly smaller */
+.inner-summary .value-display { 
+    font-size: 1.25rem; 
+}
+
 .card-income i { color: var(--positive); }
 .card-expense i { color: var(--negative); }
 .card-savings i { color: #0284c7; }
@@ -460,22 +614,16 @@ body {
     border: 1px dashed var(--border-color);
 }
 
+.no-data a {
+    text-decoration: none;
+    width: fit-content;
+}
+
 .empty-icon {
     font-size: 3rem;
     color: var(--text-muted);
     margin-bottom: 12px;
 }
-
-footer {
-    text-align: center;
-    padding: 20px;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    margin-top: 40px;
-    background-color: #1e293b;
-}
-
-footer p { margin: 0; }
 
 @media (max-width: 600px) {
     .nav-title h2 { font-size: 1rem; }

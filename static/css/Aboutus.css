@@ -1,7 +1,6 @@
 :root {
     --primary: #4f46e5;
     --primary-hover: #4338ca;
-    --bg-header: #1e293b;
     --bg-body: #f8fafc;
     --bg-card: #ffffff;
     --text-main: #0f172a;
@@ -16,70 +15,6 @@
 
 * {
     box-sizing: border-box;
-}
-
-body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-body);
-    color: var(--text-main);
-    line-height: 1.6;
-}
-
-/* --- Header Navbar --- */
-header {
-    background-color: var(--bg-header);
-    color: #ffffff;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    padding: 0.85rem 1.5rem;
-    box-shadow: var(--shadow);
-}
-
-.header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.back-link {
-    color: #cbd5e1;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.95rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: var(--transition);
-}
-
-.back-link:hover {
-    color: #ffffff;
-    transform: translateX(-2px);
-}
-
-header h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.header-icon {
-    color: var(--primary);
-}
-
-/* --- Main Layout Container --- */
-.container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 2.5rem 1.5rem;
 }
 
 /* --- Hero Section --- */
@@ -233,7 +168,7 @@ header h2 {
 }
 
 .benefit-item i {
-    color: #10b981; /* Success Green */
+    color: #10b981;
     font-size: 1.15rem;
     margin-top: 0.15rem;
 }
@@ -304,26 +239,8 @@ header h2 {
     color: var(--text-muted);
 }
 
-/* --- Footer --- */
-footer {
-    text-align: center;
-    padding: 2rem 1.5rem;
-    background-color: var(--bg-header);
-    color: #94a3b8;
-    font-size: 0.85rem;
-    margin-top: 4rem;
-}
-
-footer p {
-    margin: 0;
-}
-
 /* --- Responsive Breakpoints --- */
 @media (max-width: 768px) {
-    .container {
-        padding: 1.75rem 1rem;
-    }
-
     .hero-section h1 {
         font-size: 1.75rem;
     }

@@ -1,42 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Wisely: Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
-    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
+{% extends "default_base.html" %}
 
-</head>
-<body>
-        <!-- Flash Messages -->
-        <div class="message">    
-            {% with messages = get_flashed_messages(with_categories=True) %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                            <div class="flash-message {{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
-            </div>
-    <div class="all">
-    <div class="auth-container">
+{% block title %}Login | Budget Wisely{% endblock %}
 
-        <h2>User Login</h2>
-        <form method="POST" action="{{ url_for('login') }}">
-                <input type="email" name="email" placeholder="Email" required>
-                <input type="password" name="password" placeholder="Password" autocomplete="off" required>
-                <button type="submit">Login</button>
-            </form>
-            <p><a href="{{ url_for('forgot_password') }}">Forgot Password?</a></p>
-            <p><a href="{{ url_for('signup') }}">New here?</a></p>
-            
-            <a href="{{ url_for('default') }}">Back to Home</a>
-              </div>
+{% block auth_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
+<style>
+    /* Custom tweaks for icons inside auth container */
+    .auth-container { width: 100%; max-width: 400px; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    .auth-container h2 { text-align: center; margin-top: 0; color: #0f172a; margin-bottom: 1.5rem; }
+    .input-icon-group { position: relative; margin-bottom: 1rem; }
+    .input-icon-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #64748b; }
+    .input-icon-group input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box; }
+    .input-icon-group input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
+    .auth-container button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; }
+    .auth-container button:hover { background: #4338ca; }
+    .auth-links { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; }
+    .auth-links a { color: #4f46e5; text-decoration: none; font-weight: 500; display: block; margin-bottom: 0.5rem; }
+    .auth-links a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2><i class="fa-solid fa-user-lock" style="color: #4f46e5; margin-right: 8px;"></i> User Login</h2>
+    
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="input-icon-group">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" name="email" placeholder="Email Address" required>
         </div>
-</body>
-</html>
+        
+        <div class="input-icon-group">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" name="password" placeholder="Password" autocomplete="off" required>
+        </div>
+        
+        <button type="submit"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
+    </form>
+    
+    <div class="auth-links">
+        <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+        <a href="{{ url_for('signup') }}">Don't have an account? Sign up</a>
+        <a href="{{ url_for('default') }}" style="color: #64748b;"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+    </div>
+</div>
+{% endblock %}

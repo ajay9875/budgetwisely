@@ -1,101 +1,26 @@
-/* ================================
-   1. GLOBAL & RESET STYLES
-   ================================ */
 :root {
-  --primary-color: #27ae60;
-  --primary-hover: #219150;
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
   --bg-color: #f8fafc;
   --card-bg: #ffffff;
   --text-main: #1e293b;
   --text-muted: #64748b;
   --border-color: #e2e8f0;
-  --focus-ring: rgba(39, 174, 96, 0.2);
+  --focus-ring: rgba(79, 70, 229, 0.2);
   --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
   --radius-md: 12px;
   --radius-sm: 8px;
   --transition: all 0.25s ease-in-out;
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--bg-color);
-  color: var(--text-main);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
 /* ================================
-   2. HEADER NAVBAR
+   FORM CARD & LAYOUT
    ================================ */
-.header-nav {
-  background-color: #1e293b;
-  padding: 1rem 2rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #cbd5e1;
-  text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 500;
-  transition: var(--transition);
-}
-
-.back-link:hover {
-  color: #ffffff;
-  transform: translateX(-3px);
-}
-
-.header-content h2 {
-  color: #ffffff;
-  font-size: 1.25rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.header-icon {
-  color: #6366f1;
-  font-size: 1.1rem;
-}
-
-/* ================================
-   3. CONTAINER & FORM CARD
-   ================================ */
-.all {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: clamp(1.5rem, 4vw, 3rem) 1rem;
-}
-
-.auth-container {
+.contact-container {
   background: var(--card-bg);
   width: 100%;
-  max-width: 440px;
+  max-width: 500px;
+  margin: 2rem auto;
   padding: clamp(1.75rem, 5vw, 2.5rem);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
@@ -120,7 +45,7 @@ body {
 }
 
 /* ================================
-   4. INPUT FIELDS & ICONS
+   INPUT FIELDS & ICONS
    ================================ */
 .contact-form {
   display: flex;
@@ -186,7 +111,7 @@ body {
 }
 
 /* ================================
-   5. BUTTON & FOOTER
+   BUTTON & FOOTER
    ================================ */
 .submit-btn {
   width: 100%;
@@ -236,21 +161,4 @@ body {
 .home-link:hover {
   color: var(--primary-color);
   text-decoration: none;
-}
-
-/* ================================
-   6. RESPONSIVE BREAKPOINTS
-   ================================ */
-@media (max-width: 576px) {
-  .header-nav {
-    padding: 0.85rem 1rem;
-  }
-  
-  .header-content h2 {
-    font-size: 1.05rem;
-  }
-
-  .auth-container {
-    padding: 1.5rem 1.25rem;
-  }
 }
