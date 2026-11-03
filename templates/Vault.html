@@ -2,7 +2,7 @@
 {% block title %}My Vault{% endblock %}
 
 {% block content %}
-<div class="all" style="justify-content: center; display: flex; padding-top: 0; padding-bottom: 0;">
+<div class="all" style="justify-content: center; display: flex; padding-top: 2rem; padding-bottom: 2rem;">
     <div class="results" style="max-width: 800px; width: 100%; margin: 0 auto;">
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
@@ -13,18 +13,30 @@
         </div>
 
         {% if not is_unlocked %}
+            <!-- ========================================== -->
             <!-- LOCKED STATE -->
+            <!-- ========================================== -->
             <div class="calculator" style="max-width: 400px; margin: 0 auto; text-align: center;">
                 <i class="fa-solid fa-lock" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
                 <h3>Vault Locked</h3>
                 <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Enter your Vault PIN to view your secrets.</p>
+                
                 <form method="POST" onsubmit="handleFormSubmit(event)">
                     <input type="password" name="pin" required placeholder="Enter Vault PIN" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 1rem; text-align: center; font-size: 1.2rem; box-sizing: border-box;">
                     <button type="submit" class="btn-primary" style="width: 100%;">Unlock</button>
                 </form>
+
+                <!-- FORGOT PIN LINK (Now opens the Modal) -->
+                <div style="margin-top: 1.5rem;">
+                    <a href="javascript:void(0);" onclick="openResetModal()" style="color: var(--text-muted); font-size: 0.9rem; text-decoration: none;">
+                        Forgot PIN?
+                    </a>
+                </div>
             </div>
         {% else %}
+            <!-- ========================================== -->
             <!-- UNLOCKED STATE -->
+            <!-- ========================================== -->
             <div class="calculator" style="margin-bottom: 2rem;">
                 <h3 style="margin-top: 0;"><i class="fa-solid fa-plus"></i> Add New Secret</h3>
                 <form method="POST" action="{{ url_for('vault_add') }}" onsubmit="handleFormSubmit(event)">
@@ -45,47 +57,52 @@
                 {% for item in items %}
                 <div class="summary-card" style="margin-bottom: 1rem; text-align: left; padding: 1.25rem;">
                     
-                    <!-- Title & Action Buttons -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                         <strong style="font-size: 1.1rem; color: var(--text-main);">{{ item.title }}</strong>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button type="button" class="icon-btn" onclick="toggleVaultEdit('edit-{{ item.id }}')" title="Edit Secret" style="color: var(--primary);">
+                            <button type="button" class="icon-btn" onclick="toggleVaultEdit('{{ item.id }}')" title="Edit Secret" style="color: var(--primary);">
                                 <i class="fa-solid fa-pen"></i>
                             </button>
-                            <a href="{{ url_for('vault_delete', item_id=item.id) }}" class="icon-btn" onclick="return confirm('Delete this secret?');" title="Delete Secret">
+                            <button type="button" class="icon-btn" onclick="openDeleteModal('{{ item.id }}', '{{ item.title }}')" title="Delete Secret">
                                 <i class="fa-solid fa-trash-can" style="color: var(--danger);"></i>
-                            </a>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Secret Display -->
-                    <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-family: monospace; white-space: pre-wrap; word-wrap: break-word;">{{ item.secret_text }}</div>
-                    
-                    <!-- Timestamps (IST) -->
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem;">
-                        <span><i class="fa-regular fa-clock"></i> Added: {{ item.created_ist }} (IST)</span>
-                        {% if item.updated_ist %}
-                        <span style="color: var(--primary);"><i class="fa-solid fa-rotate-right"></i> Updated: {{ item.updated_ist }} (IST)</span>
-                        {% endif %}
+                    <!-- ========================================== -->
+                    <!-- READING VIEW (Default) -->
+                    <!-- ========================================== -->
+                    <div id="display-{{ item.id }}">
+                        <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-family: monospace; white-space: pre-wrap; word-wrap: break-word;">{{ item.secret_text }}</div>
+                        
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                            <span><i class="fa-regular fa-clock"></i> Added: {{ item.created_ist }} (IST)</span>
+                            {% if item.updated_ist %}
+                            <span style="color: var(--primary);"><i class="fa-solid fa-rotate-right"></i> Updated: {{ item.updated_ist }} (IST)</span>
+                            {% endif %}
+                        </div>
                     </div>
 
-                    <!-- Hidden Inline Edit Form -->
-                    <div id="edit-{{ item.id }}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border);">
+                    <!-- ========================================== -->
+                    <!-- EDITING VIEW (Hidden by default) -->
+                    <!-- ========================================== -->
+                    <div id="edit-{{ item.id }}" style="display: none;">
                         <form method="POST" action="{{ url_for('vault_edit', item_id=item.id) }}" onsubmit="handleFormSubmit(event)">
-                            <div class="form-group">
-                                <label style="font-size: 0.85rem;">Edit Title</label>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label style="font-size: 0.85rem; margin-bottom: 0.2rem;">Edit Title</label>
                                 <input type="text" name="title" value="{{ item.title }}" required style="padding: 0.5rem; font-size: 0.9rem;">
                             </div>
-                            <div class="form-group">
-                                <label style="font-size: 0.85rem;">Edit Secret</label>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label style="font-size: 0.85rem; margin-bottom: 0.2rem;">Edit Secret</label>
                                 <textarea name="secret_text" required rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: monospace; font-size: 0.9rem; box-sizing: border-box;">{{ item.secret_text }}</textarea>
                             </div>
                             <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                                <button type="button" class="btn-cancel-expense" onclick="toggleVaultEdit('edit-{{ item.id }}')" style="padding: 0.4rem 0.75rem;">Cancel</button>
-                                <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; width: auto;"><i class="fa-solid fa-check"></i> Save Changes</button>
+                                <button type="button" class="btn-cancel-expense" onclick="toggleVaultEdit('{{ item.id }}')" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">Cancel</button>
+                                <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; width: auto; font-size: 0.85rem;"><i class="fa-solid fa-check"></i> Save</button>
                             </div>
                         </form>
                     </div>
+
                 </div>
                 {% endfor %}
             {% else %}
@@ -97,15 +114,139 @@
         {% endif %}
     </div>
 </div>
+
+<!-- ========================================== -->
+<!-- RESET PIN MODAL DIALOG -->
+<!-- ========================================== -->
+<div id="reset-pin-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="text-align: left;">
+        <!-- Header with Close Button -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <div class="modal-icon" style="margin: 0; width: 45px; height: 45px; font-size: 1.2rem;">
+                <i class="fa-solid fa-key"></i>
+            </div>
+            <button onclick="closeResetModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-main); font-size: 1.25rem;">Reset Vault PIN</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">To securely reset your PIN, please verify your identity using your main account password.</p>
+
+        <!-- 👈 ERROR MESSAGE CONTAINER -->
+        <div id="reset-error-msg" style="display: none; background: #fef2f2; color: #ef4444; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; border: 1px solid #fecaca;"></div>
+
+        <!-- 👈 ADDED ID TO THE FORM -->
+        <form id="reset-pin-form" method="POST" onsubmit="submitResetPin(event)">
+            <div class="form-group">
+                <label style="font-size: 0.85rem;">Account Password</label>
+                <input type="password" name="account_pass" required placeholder="Enter your login password" style="padding: 0.6rem; font-size: 0.9rem;">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 0.85rem;">New Vault PIN (Min 4 characters)</label>
+                <input type="password" name="new_pin" required minlength="4" placeholder="e.g. 1234 or mysecretpin" style="padding: 0.6rem; font-size: 0.9rem;">
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <!-- 👈 ADDED ID TO THE BUTTON -->
+                <button type="submit" id="reset-pin-btn" class="btn-primary" style="width: 100%;"><i class="fa-solid fa-shield-halved"></i> Reset PIN & Unlock</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- DELETE CONFIRMATION MODAL -->
+<!-- ========================================== -->
+<div id="delete-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+        <div class="modal-icon">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3>Delete Secret?</h3>
+        <p>Are you sure you want to permanently delete <strong id="delete-item-title" style="color: var(--text-main);"></strong>? This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+            <a href="#" id="delete-confirm-link" class="btn-confirm">Yes, Delete</a>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    function toggleVaultEdit(formId) {
-        const form = document.getElementById(formId);
-        if (form) {
-            form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none";
+    function toggleVaultEdit(itemId) {
+        const displayDiv = document.getElementById('display-' + itemId);
+        const editDiv = document.getElementById('edit-' + itemId);
+        
+        if (editDiv.style.display === 'none') {
+            // Switch to Edit Mode
+            displayDiv.style.display = 'none';
+            editDiv.style.display = 'block';
+        } else {
+            // Switch back to Reading Mode
+            displayDiv.style.display = 'block';
+            editDiv.style.display = 'none';
         }
+    }
+
+    function openResetModal() {
+        document.getElementById('reset-pin-modal').style.display = 'flex';
+        document.getElementById('reset-error-msg').style.display = 'none'; // Hide old errors
+    }
+
+    function closeResetModal() {
+        document.getElementById('reset-pin-modal').style.display = 'none';
+    }
+
+    // 🚀 NEW AJAX SUBMISSION FUNCTION
+    function submitResetPin(event) {
+        event.preventDefault(); // Stop normal form submission
+        
+        const form = document.getElementById('reset-pin-form');
+        const btn = document.getElementById('reset-pin-btn');
+        const errorBox = document.getElementById('reset-error-msg');
+        
+        // Hide old error & show loading state
+        errorBox.style.display = 'none';
+        const originalBtnText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+        btn.disabled = true;
+
+        const formData = new FormData(form);
+
+        fetch('/vault/reset-pin', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Success! Redirect to the vault page
+                window.location.href = "{{ url_for('vault') }}";
+            } else {
+                // Show error inline and restore button
+                errorBox.innerText = data.error;
+                errorBox.style.display = 'block';
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            errorBox.innerText = "An error occurred. Please try again.";
+            errorBox.style.display = 'block';
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+        });
+    }
+    // --- Delete Modal Logic ---
+    function openDeleteModal(itemId, itemTitle) {
+        document.getElementById('delete-item-title').innerText = itemTitle;
+        // Set the href of the Yes button to the correct delete URL
+        document.getElementById('delete-confirm-link').href = "/vault/delete/" + itemId;
+        // Show the modal
+        document.getElementById('delete-modal').style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('delete-modal').style.display = 'none';
     }
 </script>
 {% endblock %}

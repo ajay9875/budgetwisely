@@ -262,6 +262,35 @@ def vault_setup():
             
     return render_template('VaultSetup.html')
 
+from flask import jsonify  # Make sure this is imported at the top
+
+@app.route('/vault/reset-pin', methods=['POST'])
+def vault_reset_pin():
+    if 'user_id' not in session:
+        return jsonify({"success": False, "error": "Session expired. Please log in again."}), 401
+    
+    user = db.session.get(User, session['user_id'])
+    account_pass = request.form.get('account_pass', '').strip()
+    new_pin = request.form.get('new_pin', '').strip()
+
+    # 1. Verify Account Password
+    if not check_password_hash(user.password, account_pass):
+        # Return JSON error instead of redirecting
+        return jsonify({"success": False, "error": "Incorrect account password. PIN not reset."}), 400
+
+    # 2. Validate New PIN Length
+    if len(new_pin) < 4:
+        return jsonify({"success": False, "error": "PIN must be at least 4 characters."}), 400
+
+    # 3. Update PIN, Unlock Vault
+    user.vault_pin = generate_password_hash(new_pin)
+    db.session.commit()
+    
+    session['vault_unlocked'] = True
+    
+    # Return success JSON
+    return jsonify({"success": True, "message": "Vault PIN reset successfully! Unlocking..."}), 200
+
 @app.route('/vault/lock')
 def vault_lock():
     session.pop('vault_unlocked', None)
