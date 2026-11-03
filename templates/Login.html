@@ -11,11 +11,17 @@
     .input-icon-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #64748b; }
     .input-icon-group input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box; }
     .input-icon-group input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
-    .auth-container button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; }
+    .auth-container button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 8px; }
     .auth-container button:hover { background: #4338ca; }
+    .auth-container button:disabled { background: #9ca3af; cursor: not-allowed; }
     .auth-links { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; }
     .auth-links a { color: #4f46e5; text-decoration: none; font-weight: 500; display: block; margin-bottom: 0.5rem; }
     .auth-links a:hover { text-decoration: underline; }
+    
+    /* Error Message Box */
+    #login-error {
+        display: none; background: #fef2f2; color: #ef4444; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; border: 1px solid #fecaca; text-align: center;
+    }
 </style>
 {% endblock %}
 
@@ -23,7 +29,10 @@
 <div class="auth-container">
     <h2><i class="fa-solid fa-user-lock" style="color: #4f46e5; margin-right: 8px;"></i> User Login</h2>
     
-    <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
+    <!-- Error Message Container -->
+    <div id="login-error"></div>
+
+    <form id="login-form" method="POST" action="{{ url_for('login') }}" autocomplete="off" onsubmit="submitLogin(event)">
         <div class="input-icon-group">
             <i class="fa-solid fa-envelope"></i>
             <input type="email" name="email" placeholder="Email Address" required autocomplete="new-password">
@@ -34,7 +43,7 @@
             <input type="password" name="password" placeholder="Password" required autocomplete="new-password">
         </div>
         
-        <button type="submit"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
+        <button type="submit" id="login-btn"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
     </form>
     
     <div class="auth-links">
@@ -47,11 +56,68 @@
 
 {% block scripts %}
 <script>
-    // Clear all input fields on page load to prevent browser autofill
+    // Clear inputs on load to prevent autofill
     window.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('input').forEach(function(input) {
             input.value = '';
         });
     });
+
+    // AJAX Login Function
+    function submitLogin(event) {
+        event.preventDefault(); // Stop page reload
+
+        const form = document.getElementById('login-form');
+        const btn = document.getElementById('login-btn');
+        const errorBox = document.getElementById('login-error');
+        const originalBtnHtml = btn.innerHTML;
+
+        // Reset UI
+        errorBox.style.display = 'none';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Authenticating...';
+        btn.disabled = true;
+
+        const formData = new FormData(form);
+
+        fetch("{{ url_for('login') }}", {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            // If the backend redirects (successful login), the response.url will be the dashboard
+            if (response.redirected) {
+                window.location.href = response.url;
+                return;
+            }
+            // If not redirected, it means the login failed, so read the HTML
+            return response.text();
+        })
+        .then(html => {
+            if (!html) return; // Handled by the redirect above
+
+            // Parse the returned HTML to find the flash message
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const flashMessage = doc.querySelector('.flash-message.error');
+
+            if (flashMessage) {
+                errorBox.innerText = flashMessage.innerText;
+                errorBox.style.display = 'block';
+            } else {
+                errorBox.innerText = "Login failed. Please check your credentials.";
+                errorBox.style.display = 'block';
+            }
+
+            // Restore button
+            btn.innerHTML = originalBtnHtml;
+            btn.disabled = false;
+        })
+        .catch(error => {
+            errorBox.innerText = "Network error. Please try again.";
+            errorBox.style.display = 'block';
+            btn.innerHTML = originalBtnHtml;
+            btn.disabled = false;
+        });
+    }
 </script>
 {% endblock %}

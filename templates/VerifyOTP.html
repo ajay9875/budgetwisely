@@ -5,37 +5,84 @@
 {% block auth_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
 <style>
-    .auth-container { width: 100%; max-width: 400px; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; text-align: center; }
-    .auth-container h2 { margin-top: 0; color: #0f172a; margin-bottom: 1.5rem; }
+    .auth-container { width: 100%; max-width: 420px; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; text-align: center; }
+    .auth-container h2 { margin-top: 0; color: #0f172a; margin-bottom: 0.5rem; font-size: 1.4rem; }
+    .auth-container p { color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+    
     .input-icon-group { position: relative; margin-bottom: 1rem; }
     .input-icon-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #64748b; }
-    .input-icon-group input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 1rem; box-sizing: border-box; text-align: center; letter-spacing: 4px; }
+    .input-icon-group input { width: 100%; padding: 0.85rem 1rem 0.85rem 2.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 1.1rem; box-sizing: border-box; text-align: center; letter-spacing: 4px; font-weight: 600; }
     .input-icon-group input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
-    .auth-container button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; }
+    
+    .auth-container button { width: 100%; padding: 0.85rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; font-size: 1rem; display: flex; justify-content: center; align-items: center; gap: 8px; }
     .auth-container button:hover { background: #4338ca; }
+    
+    /* Spam Warning Box */
+    .spam-warning {
+        display: flex;
+        gap: 0.75rem;
+        text-align: left;
+        background: #fffbeb;
+        border: 1px solid #fef3c7;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        align-items: flex-start;
+    }
+    .spam-warning i {
+        color: #f59e0b;
+        font-size: 1.2rem;
+        margin-top: 2px;
+    }
+    .spam-warning div {
+        font-size: 0.85rem;
+        color: #92400e;
+        line-height: 1.4;
+    }
+    .spam-warning strong {
+        color: #78350f;
+    }
+
     .auth-links { margin-top: 1.5rem; font-size: 0.9rem; }
     .auth-links a { color: #4f46e5; text-decoration: none; font-weight: 500; display: block; margin-bottom: 0.5rem; }
+    .auth-links a:hover { text-decoration: underline; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="auth-container">
-    <h2><i class="fa-solid fa-shield-halved" style="color: #4f46e5; margin-right: 8px;"></i> Verify OTP</h2>
     
+    <!-- Hero Icon & Heading -->
+    <div style="width: 60px; height: 60px; background: #e0e7ff; color: #4f46e5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 1rem auto;">
+        <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    
+    <h2>Security Check</h2>
+    <p>We've sent a 6-digit verification code to your email address. Enter it below to verify your identity.</p>
+
+    <!-- Spam Warning Box -->
+    <div class="spam-warning">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <div>
+            <strong>Can't find the email?</strong><br>
+            Please check your <strong>Spam</strong> or <strong>Junk</strong> folder. Sometimes security emails end up there by mistake.
+        </div>
+    </div>
+
     <form method="POST">
         <input type="hidden" name="email" value="{{ email }}">
         
         <div class="input-icon-group">
             <i class="fa-solid fa-hashtag"></i>
-            <input type="text" name="otp" placeholder="Enter OTP" required>
+            <input type="text" name="otp" placeholder="000000" required maxlength="6" autocomplete="off">
         </div>
         
         <button type="submit"><i class="fa-solid fa-check-circle"></i> Verify OTP</button>
     </form>
     
     <div class="auth-links">
-        <a href="{{ url_for('resend_otp') }}">Resend OTP</a>
-        <a href="{{ url_for('default') }}" style="color: #64748b; margin-top: 1rem;"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+        <a href="{{ url_for('resend_otp') }}" style="margin-top: 1rem;">Didn't receive it? Resend OTP</a>
+        <a href="{{ url_for('default') }}" style="color: #64748b; margin-top: 0.5rem;"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
     </div>
 </div>
 {% endblock %}
