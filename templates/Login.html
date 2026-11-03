@@ -5,7 +5,6 @@
 {% block auth_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
 <style>
-    /* Custom tweaks for icons inside auth container */
     .auth-container { width: 100%; max-width: 400px; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
     .auth-container h2 { text-align: center; margin-top: 0; color: #0f172a; margin-bottom: 1.5rem; }
     .input-icon-group { position: relative; margin-bottom: 1rem; }
@@ -24,15 +23,15 @@
 <div class="auth-container">
     <h2><i class="fa-solid fa-user-lock" style="color: #4f46e5; margin-right: 8px;"></i> User Login</h2>
     
-    <form method="POST" action="{{ url_for('login') }}">
+    <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
         <div class="input-icon-group">
             <i class="fa-solid fa-envelope"></i>
-            <input type="email" name="email" placeholder="Email Address" required>
+            <input type="email" name="email" placeholder="Email Address" required autocomplete="new-password">
         </div>
         
         <div class="input-icon-group">
             <i class="fa-solid fa-lock"></i>
-            <input type="password" name="password" placeholder="Password" autocomplete="off" required>
+            <input type="password" name="password" placeholder="Password" required autocomplete="new-password">
         </div>
         
         <button type="submit"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
@@ -44,4 +43,15 @@
         <a href="{{ url_for('default') }}" style="color: #64748b;"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Clear all input fields on page load to prevent browser autofill
+    window.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('input').forEach(function(input) {
+            input.value = '';
+        });
+    });
+</script>
 {% endblock %}
