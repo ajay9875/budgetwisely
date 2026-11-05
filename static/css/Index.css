@@ -409,6 +409,11 @@ footer a:hover {
 @media (max-width: 992px) {
     .all { flex-direction: column; padding: 1rem; }
     .left, .right { flex: 0 0 100%; width: 100%; }
+    .edit-expense-form-container { flex-direction: column; 
+        gap: 0.5rem; 
+        align-items: flex-start;
+        justify-content: flex-start !important;
+    }
 }
 
 /* Mobile Screens (<= 600px) */
@@ -439,6 +444,11 @@ footer a:hover {
     .all { padding: 0.75rem; }
     .left { grid-template-columns: 1fr; }
     .summary-cards { grid-template-columns: 1fr; }
+    .edit-expense-form-container { flex-direction: column; 
+        gap: 0.5rem; 
+        align-items: flex-start;
+        justify-content: flex-start !important;
+    }
     .expense-table th:nth-child(3), .expense-table td:nth-child(3) { display: none; }
 }
 /* Only if you want to hide the logo text on tiny screens (<= 400px) */
@@ -510,6 +520,19 @@ footer a:hover {
     justify-content: center;
 }
 
+.edit-expense-form-container {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.edit-expense-action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0 !important;
+}
+
 .btn-cancel {
     flex: 1;
     background: var(--bg-body);
@@ -524,6 +547,23 @@ footer a:hover {
 }
 
 .btn-cancel:hover { background: #e2e8f0; }
+
+.edit-expense-action-buttons .btn-primary {
+    flex: 1;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: var(--transition);
+}
 
 .btn-confirm {
     flex: 1;

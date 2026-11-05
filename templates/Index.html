@@ -57,11 +57,32 @@
         <section class="results">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                 <h2 class="section-title" style="margin: 0;"><i class="fa-solid fa-chart-pie"></i> Overview: {{ budget_result.month_name }}</h2>
-                <form method="POST" action="/edit_income" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; align-items: center;">
-                    <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
-                    <input type="number" name="new_income" step="0.01" placeholder="{{ budget_result.monthly_income }}" required class="inline-input" style="width: 120px;">
-                    <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="fa-solid fa-pen"></i> Update</button>
-                </form>
+                
+                <!-- 1. VIEW MODE (Default) -->
+                <div id="income-view-{{ budget_result.month_name }}" style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="background: var(--bg-body); padding: 0.5rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-weight: 600;">
+                        Current Income: ₹{{ "%.2f"|format(budget_result.monthly_income) }}
+                    </div>
+                    <!-- Pencil Icon to trigger edit -->
+                    <button type="button" class="icon-btn" onclick="toggleIncomeEdit('{{ budget_result.month_name }}')" title="Edit Income" style="color: var(--primary); font-size: 1.1rem;">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                </div>
+
+                <!-- 2. EDIT MODE (Hidden by default) -->
+                <div id="income-edit-{{ budget_result.month_name }}" style="display: none; align-items: center; gap: 0.5rem;">
+                    <form method="POST" action="/edit_income" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; align-items: center; margin: 0;">
+                        <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
+                        <input type="number" name="new_income" step="0.01" value="{{ budget_result.monthly_income }}" required class="inline-input" style="width: 120px;">
+                        
+                            <button type="button" class="btn-cancel-expense" onclick="toggleIncomeEdit('{{ budget_result.month_name }}')" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto;">
+                                <i class="fa-solid fa-check"></i> Save
+                            </button>
+                    </form>
+                </div>
             </div>
             
             <div class="summary-cards">
@@ -128,16 +149,25 @@
                             </tr>
                             <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
                                 <td colspan="5">
-                                    <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
+                                    <form class="edit-expense" method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
                                         <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                         <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
                                         <input type="hidden" name="target_page" value="dashboard">
-                                        <label style="font-size: 0.85rem; font-weight: 600;">Category:</label>
-                                        <input type="text" name="category" value="{{ expense.category }}" required class="inline-input" style="width: 140px;">
-                                        <label style="font-size: 0.85rem; font-weight: 600;">Amount (₹):</label>
-                                        <input type="number" step="0.01" name="amount" value="{{ expense.amount }}" required class="inline-input" style="width: 100px;">
+                                    <div class="edit-expense-form-container">    
+                                        <label style="font-size: 0.85rem; font-weight: 600;">Category:
+                                            <input type="text" name="category" value="{{ expense.category }}" required class="inline-input" style="width: 140px;">
+                                        </label>
+                                        <label style="font-size: 0.85rem; font-weight: 600;">Amount (₹):
+                                            <input type="number" step="0.01" name="amount" value="{{ expense.amount }}" required class="inline-input" style="width: 100px;">
+                                        </label>
+                                        <label style="font-size: 0.85rem; font-weight: 600;">Date:
+                                            <input type="date" name="date" value="{{ expense.date }}" required class="inline-input" style="width: 140px;">
+                                        </label>
+                                    </div>
+                                    <div class="edit-expense-action-buttons">
+                                        <button type="button" class="btn-cancel" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;">Cancel</button>
                                         <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;"><i class="fa-solid fa-check"></i> Save</button>
-                                        <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
                                     </form>
                                 </td>
                             </tr>
@@ -168,6 +198,21 @@
     function toggleExpenseForm(formId) {
         const el = document.getElementById(formId);
         el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+    }
+        // Toggle Income Edit Mode
+    function toggleIncomeEdit(monthName) {
+        const viewDiv = document.getElementById('income-view-' + monthName);
+        const editDiv = document.getElementById('income-edit-' + monthName);
+
+        if (editDiv.style.display === 'none') {
+            // Switch to Edit Mode
+            viewDiv.style.display = 'none';
+            editDiv.style.display = 'flex';
+        } else {
+            // Switch back to View Mode
+            viewDiv.style.display = 'flex';
+            editDiv.style.display = 'none';
+        }
     }
     function confirmDeleteMonth() {
         if (confirm("Are you sure you want to permanently delete this month?")) {
