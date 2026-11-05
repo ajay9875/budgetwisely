@@ -102,6 +102,9 @@ with app.app_context():
 
 # At the top:
 from datetime import datetime, timedelta, timezone
+# Ensure IST is defined at the top of your app.py
+from zoneinfo import ZoneInfo
+IST = ZoneInfo("Asia/Kolkata")
 
 # Add this function right above your routes (e.g., right after the `never_cache` function):
 def to_ist(utc_dt):
@@ -175,7 +178,7 @@ def dashboard():
             session.pop("selected_month", None)
 
     if budget:
-        expenses = Expense.query.filter_by(budget_id=budget.id).all()
+        expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
         total_expenses = sum(float(exp.expense_amount) for exp in expenses)
         savings = float(budget.monthly_income) - total_expenses
         budget_result = {
@@ -647,42 +650,99 @@ def edit_expense():
     expense_id = request.form.get('expense_id')
     raw_category = request.form.get('category', '').strip()
     raw_amount = request.form.get('amount', '').strip()
+    date_str = request.form.get('date', '').strip()
     target_page = request.form.get('target_page', '').strip() or 'dashboard'
 
-    if not raw_category or not raw_amount:
-        flash("Please enter both category and expense amount.", 'error')
+    if not raw_category or not raw_amount or not date_str:
+        flash("Please enter all fields.", 'error')
         return redirect(url_for(target_page))
 
     try:
+        # 1. Validate Amount
         new_amount = float(raw_amount)
         if new_amount < 0:
             flash("Please enter a valid positive expense amount.", 'error')
             return redirect(url_for(target_page))
-    except ValueError:
-        flash("Invalid expense amount entered.", 'error')
+
+        # 2. Validate Category Length
+        if len(raw_category) > 100:
+            flash("Expense category is too long (max 100 characters).", 'error')
+            return redirect(url_for(target_page))
+
+        # 3. Validate Date Format & Boundaries (IST)
+        try:
+            new_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            flash("Invalid date format. Please use YYYY-MM-DD.", 'error')
+            return redirect(url_for(target_page))
+
+        today_ist = datetime.now(IST).date()
+
+        if new_date > today_ist:
+            flash("Expense date cannot be in the future.", 'error')
+            return redirect(url_for(target_page))
+
+        if new_date < today_ist - timedelta(days=365 * 5):
+            flash("Expense date cannot be older than 5 years.", 'error')
+            return redirect(url_for(target_page))
+
+        if new_date.year < 2000:
+            flash("Expense date cannot be before the year 2000.", 'error')
+            return redirect(url_for(target_page))
+
+    except Exception as e:
+        flash(f"Validation error: {str(e)}", 'error')
         return redirect(url_for(target_page))
 
     try:
         expense = db.session.get(Expense, int(expense_id)) if expense_id else None
 
-        if expense and int(expense.user_id) == int(user_id):
-            if expense.expense_category == raw_category and float(expense.expense_amount) == new_amount:
-                flash('No changes were made to the expense.', 'info')
-            else:
-                expense.expense_category = raw_category
-                expense.expense_amount = new_amount
-                db.session.commit()
-
-                budget = UserBudget.query.get(expense.budget_id)
-                if budget:
-                    expenses = Expense.query.filter_by(budget_id=budget.id).all()
-                    budget.total_expenses = sum(float(exp.expense_amount) for exp in expenses)
-                    budget.savings = float(budget.monthly_income) - float(budget.total_expenses)
-                    db.session.commit()
-
-                flash('Expense updated successfully!', 'success')
-        else:
+        if not expense or int(expense.user_id) != int(user_id):
             flash('Expense record not found.', 'error')
+            return redirect(url_for(target_page))
+
+        # 4. Fetch the parent budget to check the correct month
+        budget = UserBudget.query.get(expense.budget_id)
+        if not budget:
+            flash('Parent budget not found.', 'error')
+            return redirect(url_for(target_page))
+
+        # 5. Validate that the new date falls within the SAME month as the budget
+        # Build the expected month name from the new date (e.g., "March 2026")
+        new_month_name = new_date.strftime("%B %Y").strip()
+
+        if new_month_name.lower() != budget.month_name.lower():
+            flash(
+                f"Date error: You are editing an expense inside the '{budget.month_name}' budget. "
+                f"Your new date ({new_date.strftime('%d %b %Y')}) belongs to '{new_month_name}'. "
+                f"Please select a date within {budget.month_name}.",
+                'error'
+            )
+            return redirect(url_for(target_page))
+
+        # 6. Check for no changes
+        if (
+            expense.expense_category == raw_category and
+            float(expense.expense_amount) == new_amount and
+            expense.date == new_date
+        ):
+            flash('No changes were made to the expense.', 'info')
+            return redirect(url_for(target_page))
+
+        # 7. Apply all updates (including date fields)
+        expense.expense_category = raw_category
+        expense.expense_amount = new_amount
+        expense.date = new_date
+        expense.day_name = new_date.strftime("%A")
+        expense.month_name = new_month_name  # (Same as budget.month_name)
+
+        # 8. Recalculate budget totals
+        expenses = Expense.query.filter_by(budget_id=budget.id).all()
+        budget.total_expenses = sum(float(exp.expense_amount) for exp in expenses)
+        budget.savings = float(budget.monthly_income) - float(budget.total_expenses)
+
+        db.session.commit()
+        flash('Expense updated successfully!', 'success')
 
     except Exception as e:
         db.session.rollback()
