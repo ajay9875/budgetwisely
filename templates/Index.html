@@ -5,6 +5,63 @@
 {% block head %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='Javascript/Index.js') }}"></script>
+<style>
+    /* Inline Edit Form Layout */
+    .edit-expense-form-container {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        width: 100%;
+        align-items: flex-end;
+    }
+    
+    .edit-expense-form-container label {
+        flex: 1 1 150px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-main);
+        margin: 0;
+    }
+
+    .edit-expense-action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+
+    /* 🟢 TABLET & MOBILE ADJUSTMENTS */
+    @media (max-width: 991px) {
+        .edit-expense-form-container {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        /* Force inputs to full width */
+        .edit-expense-form-container label {
+            width: 100%;
+            flex: none;
+        }
+        
+        /* Force the buttons container to stack and stretch */
+        .edit-expense-action-buttons {
+            margin-left: 0 !important;
+            width: 100% !important;
+            flex-direction: row; /* Keep buttons side-by-side */
+            margin-top: 0.5rem;
+        }
+        
+        /* Force the buttons to fill the available space */
+        .edit-expense-action-buttons button {
+            flex: 1;
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 0.95rem;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -58,29 +115,23 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                 <h2 class="section-title" style="margin: 0;"><i class="fa-solid fa-chart-pie"></i> Overview: {{ budget_result.month_name }}</h2>
                 
-                <!-- 1. VIEW MODE (Default) -->
+                <!-- 1. VIEW MODE -->
                 <div id="income-view-{{ budget_result.month_name }}" style="display: flex; align-items: center; gap: 1rem;">
                     <div style="background: var(--bg-body); padding: 0.5rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-weight: 600;">
                         Current Income: ₹{{ "%.2f"|format(budget_result.monthly_income) }}
                     </div>
-                    <!-- Pencil Icon to trigger edit -->
                     <button type="button" class="icon-btn" onclick="toggleIncomeEdit('{{ budget_result.month_name }}')" title="Edit Income" style="color: var(--primary); font-size: 1.1rem;">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
                 </div>
 
-                <!-- 2. EDIT MODE (Hidden by default) -->
+                <!-- 2. EDIT MODE -->
                 <div id="income-edit-{{ budget_result.month_name }}" style="display: none; align-items: center; gap: 0.5rem;">
                     <form method="POST" action="/edit_income" onsubmit="handleFormSubmit(event)" style="display: flex; gap: 0.5rem; align-items: center; margin: 0;">
                         <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
                         <input type="number" name="new_income" step="0.01" value="{{ budget_result.monthly_income }}" required class="inline-input" style="width: 120px;">
-                        
-                            <button type="button" class="btn-cancel-expense" onclick="toggleIncomeEdit('{{ budget_result.month_name }}')" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                                Cancel
-                            </button>
-                            <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto;">
-                                <i class="fa-solid fa-check"></i> Save
-                            </button>
+                        <button type="button" class="btn-cancel-expense" onclick="toggleIncomeEdit('{{ budget_result.month_name }}')" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">Cancel</button>
+                        <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto;"><i class="fa-solid fa-check"></i> Save</button>
                     </form>
                 </div>
             </div>
@@ -138,7 +189,7 @@
                             <tr>
                                 <td>{{ expense.category }}</td>
                                 <td>₹{{ "%.2f"|format(expense.amount) }}</td>
-                                <td><span class="percentage">{{ "%.1f"|format((expense.amount / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% of Income / {{ "%.1f"|format((expense.amount / budget_result.total_expenses) * 100 if budget_result.total_expenses > 0 else 0) }}% of Expenses</span></td>
+                                <td><span class="percentage">{{ "%.1f"|format((expense.amount / budget_result.monthly_income) * 100 if budget_result.monthly_income > 0 else 0) }}% / {{ "%.1f"|format((expense.amount / budget_result.total_expenses) * 100 if budget_result.total_expenses > 0 else 0) }}%</span></td>
                                 <td style="color: var(--text-muted); font-size: 0.85rem;">{{ expense.dayname }} {{ expense.date }}</td>
                                 <td>
                                     <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -148,26 +199,27 @@
                                 </td>
                             </tr>
                             <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
-                                <td colspan="5">
-                                    <form class="edit-expense" method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
+                                <td colspan="5" style="padding: 1rem;">
+                                    <form method="POST" action="/edit_expense">
                                         <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                         <input type="hidden" name="month_name" value="{{ budget_result.month_name }}">
                                         <input type="hidden" name="target_page" value="dashboard">
-                                    <div class="edit-expense-form-container">    
-                                        <label style="font-size: 0.85rem; font-weight: 600;">Category:
-                                            <input type="text" name="category" value="{{ expense.category }}" required class="inline-input" style="width: 140px;">
-                                        </label>
-                                        <label style="font-size: 0.85rem; font-weight: 600;">Amount (₹):
-                                            <input type="number" step="0.01" name="amount" value="{{ expense.amount }}" required class="inline-input" style="width: 100px;">
-                                        </label>
-                                        <label style="font-size: 0.85rem; font-weight: 600;">Date:
-                                            <input type="date" name="date" value="{{ expense.date }}" required class="inline-input" style="width: 140px;">
-                                        </label>
-                                    </div>
-                                    <div class="edit-expense-action-buttons">
-                                        <button type="button" class="btn-cancel" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;">Cancel</button>
-                                        <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;"><i class="fa-solid fa-check"></i> Save</button>
-                                    </div>
+                                        
+                                        <div class="edit-expense-form-container">
+                                            <label>Category
+                                                <input type="text" name="category" value="{{ expense.category }}" required class="inline-input">
+                                            </label>
+                                            <label>Amount (₹)
+                                                <input type="number" step="0.01" name="amount" value="{{ expense.amount }}" required class="inline-input">
+                                            </label>
+                                            <label>Date
+                                                <input type="date" name="date" value="{{ expense.date }}" required class="inline-input">
+                                            </label>
+                                            <div class="edit-expense-action-buttons">
+                                                <button type="button" class="btn-cancel" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')">Cancel</button>
+                                                <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Save</button>
+                                            </div>
+                                        </div>
                                     </form>
                                 </td>
                             </tr>
@@ -199,17 +251,13 @@
         const el = document.getElementById(formId);
         el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
     }
-        // Toggle Income Edit Mode
     function toggleIncomeEdit(monthName) {
         const viewDiv = document.getElementById('income-view-' + monthName);
         const editDiv = document.getElementById('income-edit-' + monthName);
-
         if (editDiv.style.display === 'none') {
-            // Switch to Edit Mode
             viewDiv.style.display = 'none';
             editDiv.style.display = 'flex';
         } else {
-            // Switch back to View Mode
             viewDiv.style.display = 'flex';
             editDiv.style.display = 'none';
         }
@@ -224,8 +272,7 @@
     {% if budget_result %}
     document.addEventListener("DOMContentLoaded", function() {
         const darkThemeScales = { x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }, y: { beginAtZero: true, ticks: { color: '#9ca3af', callback: value => '₹' + value }, grid: { color: 'rgba(255, 255, 255, 0.08)' } } };
-        const darkTooltipOptions = { backgroundColor: '#1f2937', titleColor: '#f9fafb', bodyColor: '#e5e7eb', borderColor: '#374151', borderWidth: 1, padding: 10 };
-
+        
         new Chart(document.getElementById('budgetChart').getContext('2d'), {
             type: 'bar',
             data: { labels: ['Income', 'Expenses', 'Savings'], datasets: [{ label: 'Amount (₹)', data: [{{ budget_result.monthly_income }}, {{ budget_result.total_expenses }}, {{ budget_result.savings }}], backgroundColor: ['rgba(99, 102, 241, 0.85)', 'rgba(244, 63, 94, 0.85)', {% if budget_result.savings >= 0 %}'rgba(16, 185, 129, 0.85)'{% else %}'rgba(244, 63, 94, 0.85)'{% endif %}], borderColor: ['#6366f1', '#f43f5e', {% if budget_result.savings >= 0 %}'#10b981'{% else %}'#f43f5e'{% endif %}], borderWidth: 1, borderRadius: 6 }] },

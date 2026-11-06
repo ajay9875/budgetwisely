@@ -409,11 +409,6 @@ footer a:hover {
 @media (max-width: 992px) {
     .all { flex-direction: column; padding: 1rem; }
     .left, .right { flex: 0 0 100%; width: 100%; }
-    .edit-expense-form-container { flex-direction: column; 
-        gap: 0.5rem; 
-        align-items: flex-start;
-        justify-content: flex-start !important;
-    }
 }
 
 /* Mobile Screens (<= 600px) */

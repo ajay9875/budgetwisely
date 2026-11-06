@@ -6,37 +6,97 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Allbudget.css') }}">
     
-    <!-- Breadcrumb Styling -->
-    <style>
-        .breadcrumb-nav {
-            display: flex;
-            align-items: center;
+<style>
+    /* Breadcrumb Styling */
+    .breadcrumb-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .breadcrumb-nav a { color: var(--primary); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+    .breadcrumb-nav a:hover { color: var(--primary-hover); text-decoration: underline; }
+    .breadcrumb-nav i { font-size: 0.7rem; color: #cbd5e1; }
+    .breadcrumb-current { font-weight: 600; color: var(--text-main); }
+
+    /* Inline Edit Form */
+    .edit-expense-form-container {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        width: 100%;
+        align-items: flex-end;
+    }
+    .edit-expense-form-container label {
+        flex: 1 1 120px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-main);
+        margin: 0;
+    }
+    .edit-expense-action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+        flex-wrap: wrap;
+    }
+
+    /* Tablet & Mobile Adjustments */
+    @media (max-width: 991px) {
+        .edit-expense-form-container {
+            flex-direction: column;
             gap: 0.75rem;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
         }
-        .breadcrumb-nav a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s ease;
+        .edit-expense-form-container label {
+            width: 100%;
+            flex: none;
         }
-        .breadcrumb-nav a:hover {
-            color: var(--primary-hover);
-            text-decoration: underline;
+        .edit-expense-action-buttons {
+            margin-left: 0;
+            width: 100%;
+            flex-direction: row;
+            margin-top: 0.5rem;
         }
-        .breadcrumb-nav i {
-            font-size: 0.7rem;
-            color: #cbd5e1;
+        .edit-expense-action-buttons button {
+            flex: 1;
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 0.95rem;
         }
-        .breadcrumb-current {
-            font-weight: 600;
-            color: var(--text-main);
+    }
+
+    /* 🟢 ADD EXPENSE FORM */
+    .add-expense-form-container {
+        width: 100%;
+    }
+
+    .inline-add-form {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .form-inputs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        width: 100%;
+        gap: 1rem;
+    }
+
+    @media (max-width: 600px) {
+        .form-inputs {
+            grid-template-columns: 1fr;
         }
-    </style>
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -107,7 +167,7 @@
                                     <input type="hidden" name="target_page" value="all_budgets">
                                     <input type="number" name="new_income" step="0.01" value="{{ budget.monthly_income }}" required class="inline-input" style="width: 120px;">
                                     <button type="submit" class="btn-primary" style="padding: 0.4rem 0.75rem;"><i class="fa-solid fa-pen"></i> Update</button>
-                                    <button type="button" class="btn-cancel-expense" onclick="toggleIncomeForm('income-form-{{ group.label }}-{{ loop.index }}')"><i class="fa-solid fa-xmark"></i></button>
+                                    <button type="button" class="btn-cancel-expense" onclick="toggleIncomeForm('income-form-{{ group.label }}-{{ loop.index }}')">Cancel</i></button>
                                 </form>
                             </div>
                             <p class="positive value-display">₹{{ "%.2f"|format(budget.monthly_income) }}</p>
@@ -137,20 +197,20 @@
                                     <div class="input-group"><label>Date</label><input type="date" name="exp_date" required></div>
                                 </div>
                                 <div class="form-actions">
-                                    <button type="submit" class="btn-submit-expense"><i class="fa-solid fa-check"></i> Save</button>
                                     <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('form-{{ group.label }}-{{ loop.index }}')">Cancel</button>
+                                    <button type="submit" class="btn-submit-expense"><i class="fa-solid fa-check"></i> Save</button>
                                 </div>
                             </form>
                         </div>
 
                         <div class="expense-details">
                             <h3 style="margin-top: 0; font-size: 1.05rem;"><i class="fa-solid fa-list-check"></i> Details</h3>
-                            {% if budget.expenses %}
+                        {% if budget.expenses %} 
                             <div style="overflow-x: auto;">
                                 <table class="expense-table">
                                     <thead><tr><th>Category</th><th>Amount</th><th>Distribution</th><th>Date</th><th>Actions</th></tr></thead>
                                     <tbody>
-                                        {% for expense in budget.expenses %}
+                                    {% for expense in budget.expenses %}
                                         <tr>
                                             <td>{{ expense.expense_category if expense.expense_category else expense.category }}</td>
                                             <td>₹{{ "%.2f"|format(expense.expense_amount if expense.expense_amount else expense.amount) }}</td>
@@ -168,14 +228,27 @@
                                             </td>
                                         </tr>
                                         <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
-                                            <td colspan="5">
-                                                <form method="POST" action="/edit_expense" style="display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; flex-wrap: wrap;">
+                                            <td colspan="5" style="padding: 1rem;">
+                                                <form method="POST" action="/edit_expense">
                                                     <input type="hidden" name="expense_id" value="{{ expense.id }}">
-                                                    <input type="hidden" name="target_page" value="all_budgets">
-                                                    <input type="text" name="category" value="{{ expense.expense_category if expense.expense_category else expense.category }}" required class="inline-input" style="width: 140px;">
-                                                    <input type="number" step="0.01" name="amount" value="{{ expense.expense_amount if expense.expense_amount else expense.amount }}" required class="inline-input" style="width: 100px;">
-                                                    <button type="submit" class="btn-primary" style="padding: 0.3rem 0.6rem;"><i class="fa-solid fa-check"></i> Save</button>
-                                                    <button type="button" class="btn-cancel-expense" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')"><i class="fa-solid fa-xmark"></i></button>
+                                                    <input type="hidden" name="month_name" value="{{ expense.month_name }}"> <!-- ✅ FIXED -->
+                                                    <input type="hidden" name="target_page" value="all_budgets"> <!-- ✅ FIXED -->
+                                                    
+                                                    <div class="edit-expense-form-container">
+                                                        <label>Category
+                                                            <input type="text" name="category" value="{{ expense.expense_category }}" required class="inline-input">
+                                                        </label>
+                                                        <label>Amount (₹)
+                                                            <input type="number" step="0.01" name="amount" value="{{ expense.expense_amount }}" required class="inline-input">
+                                                        </label>
+                                                        <label>Date
+                                                            <input type="date" name="date" value="{{ expense.date }}" required class="inline-input">
+                                                        </label>
+                                                        <div class="edit-expense-action-buttons">
+                                                            <button type="button" class="btn-cancel" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')">Cancel</button>
+                                                            <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Save</button>
+                                                        </div>
+                                                    </div>
                                                 </form>
                                             </td>
                                         </tr>
@@ -204,8 +277,17 @@
 
 {% block scripts %}
 <script>
-    function toggleExpenseForm(formId) { const form = document.getElementById(formId); if (form) form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none"; }
-    function toggleIncomeForm(formId) { const form = document.getElementById(formId); if (form) form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none"; }
+    function toggleExpenseForm(formId) {
+        const form = document.getElementById(formId);
+        if (form) {
+            // Check if it's a table row (for edit) or a div (for add)
+            if (form.tagName === 'TR') {
+                form.style.display = (form.style.display === "none" || form.style.display === "") ? "table-row" : "none";
+            } else {
+                form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none";
+            }
+        }
+    }    function toggleIncomeForm(formId) { const form = document.getElementById(formId); if (form) form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none"; }
 
     const monthSeparatorPlugin = {
         id: 'monthSeparator',

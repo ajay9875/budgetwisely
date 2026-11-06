@@ -470,7 +470,8 @@ footer {
     display: flex;
     align-items: center;
     gap: 8px;
-    justify-content: flex-end;
+    justify-content: center;
+    width: 100%;
 }
 
 .btn-submit-expense {
@@ -482,9 +483,13 @@ footer {
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    /* 👈 THIS IS THE FIX */
+    display: inline-flex;        /* Use flex to align icon and text */
+    align-items: center;         /* Center vertically */
+    justify-content: center;     /* Center horizontally (LEFT TO RIGHT) */
+    gap: 6px;                    /* Space between icon and text */
+    
+    width: 100% !important;      /* Keep the full width */
 }
 
 .btn-submit-expense:hover {
@@ -499,6 +504,7 @@ footer {
     border-radius: var(--radius-sm);
     font-size: 0.8rem;
     cursor: pointer;
+    width: 100% !important;
 }
 
 .btn-cancel-expense:hover {

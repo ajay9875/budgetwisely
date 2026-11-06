@@ -394,8 +394,9 @@ def all_budgets():
         uncategorized = []   # fallback if a month_name has no year
 
         for budget in all_user_budgets:
-            expenses = Expense.query.filter_by(budget_id=budget.id).all()
-
+            # ✅ Sort by date descending, then by ID descending
+            expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
+            
             expense_items = []
             total_expenses = 0.0
             for exp in expenses:
