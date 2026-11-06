@@ -387,16 +387,23 @@ def all_budgets():
 
         if not all_user_budgets:
             flash("No budget data found! Please add a month first.", "error")
-            return render_template("Allbudgets.html", username=username, budgets_by_year=[])
+            # ✅ Pass empty lifetime_stats when no data
+            empty_stats = {
+                "total_income": 0.0,
+                "total_expenses": 0.0,
+                "total_savings": 0.0,
+                "expenses_percentage": 0.0,
+                "savings_percentage": 0.0,
+            }
+            return render_template("Allbudgets.html", username=username, budgets_by_year=[], lifetime_stats=empty_stats)
 
         # ---- Build per-budget records + group by year ----
-        groups = {}   # year (int) -> list of budget dicts
-        uncategorized = []   # fallback if a month_name has no year
+        groups = {}
+        uncategorized = []
 
         for budget in all_user_budgets:
-            # ✅ Sort by date descending, then by ID descending
             expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
-            
+
             expense_items = []
             total_expenses = 0.0
             for exp in expenses:
@@ -409,7 +416,7 @@ def all_budgets():
                     "expense_amount": amount,
                     "day_name": exp.day_name,
                     "dayname": exp.day_name,
-                    "month_name": exp.month_name,        # ✅ needed by template
+                    "month_name": exp.month_name,
                     "date": exp.date
                 })
                 total_expenses += amount
@@ -458,11 +465,9 @@ def all_budgets():
         # ---- Build the final ordered structure ----
         budgets_by_year = []
 
-        # Descending year order
         for year in sorted(groups.keys(), reverse=True):
             year_budgets = groups[year]
 
-            # Descending month order within the year
             year_budgets.sort(
                 key=lambda b: (b["month_num"], b["id"]),
                 reverse=True
@@ -486,7 +491,6 @@ def all_budgets():
                                       if total_income > 0 else 0,
             })
 
-        # Append uncategorized group at the very bottom, if any
         if uncategorized:
             uncategorized.sort(key=lambda b: (b["month_num"], b["id"]), reverse=True)
             total_income = sum(b["monthly_income"] for b in uncategorized)
@@ -506,17 +510,36 @@ def all_budgets():
                                       if total_income > 0 else 0,
             })
 
+        # ✅ NEW: Calculate Lifetime Stats across all years
+        lifetime_income = sum(g['total_income'] for g in budgets_by_year)
+        lifetime_expenses = sum(g['total_expenses'] for g in budgets_by_year)
+        lifetime_savings = lifetime_income - lifetime_expenses
+
+        lifetime_stats = {
+            "total_income": lifetime_income,
+            "total_expenses": lifetime_expenses,
+            "total_savings": lifetime_savings,
+            "expenses_percentage": round((lifetime_expenses / lifetime_income) * 100, 2)
+                                   if lifetime_income > 0 else 0,
+            "savings_percentage": round((lifetime_savings / lifetime_income) * 100, 2)
+                                  if lifetime_income > 0 else 0,
+        }
+
         return make_response(render_template(
             "Allbudgets.html",
             username=username,
             budgets_by_year=budgets_by_year,
+            lifetime_stats=lifetime_stats,  # 👈 PASS LIFETIME STATS
             now=datetime.now()
         ))
 
     except Exception as e:
         app.logger.exception("all_budgets failed")
         flash(f"Error retrieving budget data: {str(e)}", "error")
-        return render_template("Allbudgets.html", username=username, budgets_by_year=[])
+        return render_template("Allbudgets.html", username=username, budgets_by_year=[], lifetime_stats={
+            "total_income": 0.0, "total_expenses": 0.0, "total_savings": 0.0,
+            "expenses_percentage": 0.0, "savings_percentage": 0.0,
+        })
 
 @app.route('/profile')
 @never_cache

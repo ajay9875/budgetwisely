@@ -7,6 +7,40 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Allbudget.css') }}">
     
 <style>
+        /* 🟢 LIFETIME HEADING */
+    .lifetime-heading {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .lifetime-heading h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--text-dark);
+        margin: 0 0 0.4rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        letter-spacing: -0.5px;
+    }
+
+    .lifetime-heading h2 i {
+        color: var(--primary);
+        font-size: 1.3rem;
+    }
+
+    .lifetime-heading p {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    @media (max-width: 600px) {
+        .lifetime-heading h2 { font-size: 1.25rem; }
+        .lifetime-heading p { font-size: 0.85rem; }
+    }
+
     /* Breadcrumb Styling */
     .breadcrumb-nav {
         display: flex;
@@ -22,6 +56,77 @@
     .breadcrumb-nav a:hover { color: var(--primary-hover); text-decoration: underline; }
     .breadcrumb-nav i { font-size: 0.7rem; color: #cbd5e1; }
     .breadcrumb-current { font-weight: 600; color: var(--text-main); }
+
+        /* =========================================
+       🟢 LIFETIME SUMMARY CARDS
+    ========================================= */
+    .lifetime-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .lifetime-card {
+        padding: 1.5rem;
+        border-radius: 16px;
+        color: #ffffff;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s ease;
+    }
+    
+    .lifetime-card:hover {
+        transform: translateY(-4px);
+    }
+
+    .lifetime-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        opacity: 0.9;
+    }
+
+    .lifetime-card-header i {
+        font-size: 1.25rem;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem;
+        border-radius: 10px;
+    }
+
+    .lifetime-amount {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 0.25rem;
+    }
+
+    .lifetime-percentage {
+        font-size: 0.85rem;
+        opacity: 0.85;
+        font-weight: 500;
+    }
+
+    /* Unique Colors for each card */
+    .lifetime-income {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    }
+    .lifetime-expense {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    .lifetime-savings {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+        .lifetime-amount { font-size: 1.5rem; }
+        .lifetime-summary { grid-template-columns: 1fr; gap: 1rem; }
+    }
 
     /* Inline Edit Form */
     .edit-expense-form-container {
@@ -108,6 +213,45 @@
         <i class="fa-solid fa-chevron-right"></i>
         <span class="breadcrumb-current">Yearly Budget Overview</span>
     </div>
+
+        <!-- ========================================== -->
+    <!-- 🟢 LIFETIME FINANCIAL OVERVIEW HEADING      -->
+    <!-- ========================================== -->
+    <div class="lifetime-heading">
+        <h2><i class="fa-solid fa-chart-line"></i> Lifetime Financial Overview</h2>
+        <p>Your cumulative earnings, spending, and savings across all recorded years and months.</p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 🟢 LIFETIME FINANCIAL OVERVIEW CARDS       -->
+    <!-- ========================================== -->
+    <section class="lifetime-summary">
+        <div class="lifetime-card lifetime-income">
+            <div class="lifetime-card-header">
+                <i class="fa-solid fa-wallet"></i>
+                <span>Total Income</span>
+            </div>
+            <div class="lifetime-amount">₹{{ "%.2f"|format(lifetime_stats.total_income) }}</div>
+        </div>
+
+        <div class="lifetime-card lifetime-expense">
+            <div class="lifetime-card-header">
+                <i class="fa-solid fa-money-bill-transfer"></i>
+                <span>Total Expenses</span>
+            </div>
+            <div class="lifetime-amount">₹{{ "%.2f"|format(lifetime_stats.total_expenses) }}</div>
+            <div class="lifetime-percentage">({{ "%.1f"|format(lifetime_stats.expenses_percentage) }}% of Income)</div>
+        </div>
+
+        <div class="lifetime-card lifetime-savings">
+            <div class="lifetime-card-header">
+                <i class="fa-solid fa-piggy-bank"></i>
+                <span>Total Savings</span>
+            </div>
+            <div class="lifetime-amount">₹{{ "%.2f"|format(lifetime_stats.total_savings|abs) }}</div>
+            <div class="lifetime-percentage">({{ "%.1f"|format(lifetime_stats.savings_percentage) }}% of Income)</div>
+        </div>
+    </section>
 
     {% if budgets_by_year %}
         {% for group in budgets_by_year %}
