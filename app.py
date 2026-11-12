@@ -151,7 +151,6 @@ try:
             path_wkhtmltopdf = r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
         config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
     else:
-        # Linux/Mac Path
         config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
 except Exception as e:
     print(f"⚠️ Warning: wkhtmltopdf not found. PDF export will not work. Error: {e}")
@@ -166,7 +165,8 @@ pdf_options = {
     'margin-left': '15mm',
     'encoding': "UTF-8",
     'enable-local-file-access': None, # Crucial for CSS/Fonts to load
-    'print-media-type': None          # Forces the browser to use print CSS
+    'print-media-type': None,
+    'quiet': '' # 👈 Add this to stop the OSError: write error logs
 }
 
 # =======================================
