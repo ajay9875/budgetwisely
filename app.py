@@ -135,6 +135,10 @@ def inject_session_status():
 
     return dict(is_logged_in=is_logged_in)
 
+@app.route('/favicon.ico')
+def favicon():
+    return redirect(url_for('static', filename='icon/favicon.png'))
+
 import os
 import pdfkit
 
