@@ -4,7 +4,7 @@
     top: 20%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 9999;
+    z-index: 9999999 !important; /* 👈 CRITICAL FIX: Puts it above the header and overlay */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -47,6 +47,12 @@
     background-color: #dc3545 !important;
     color: #ffffff !important;
 }
+.brand-logo img,
+.footer-logo img{
+    border-radius: 100% !important;
+    height: 40px;
+    width: 40px;
+}
 
 /* Optional subtle entry animation */
 @keyframes fadeIn {
@@ -58,4 +64,114 @@
         opacity: 1;
         transform: scale(1);
     }
+}
+
+.sp-12,
+.sp-12 *,
+.sp-12 *::before,
+.sp-12 *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.sp-12 {
+  --bg: #060810;
+  --c: #29b6f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.sp-12__ripple {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.sp-12__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--c);
+  opacity: 0;
+  animation: sp-12-ripple 2s ease-out infinite;
+}
+
+.sp-12__ring:nth-child(1) {
+  inset: 0;
+  animation-delay: 0s;
+}
+
+.sp-12__ring:nth-child(2) {
+  inset: 0;
+  animation-delay: 0.5s;
+}
+
+.sp-12__ring:nth-child(3) {
+  inset: 0;
+  animation-delay: 1s;
+}
+
+.sp-12__ring:nth-child(4) {
+  inset: 0;
+  animation-delay: 1.5s;
+}
+
+.sp-12__dot {
+  position: absolute;
+  inset: 30px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 12px var(--c),0 0 24px rgba(41,182,246,0.4);
+}
+
+@keyframes sp-12-ripple {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+/* Add this at the very bottom of your CSS file */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none; /* 👈 THIS IS THE KEY FIX */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #060810;
+  opacity: 0;
+  transition: opacity 0.3s ease; /* Smooth fade in/out */
+}
+
+/* This class is toggled by your JavaScript */
+#loading-overlay.show {
+  opacity: 1;
+}
+
+#loading-overlay .sp-12 {
+  min-height: auto; 
+}
+
+.sp-text {
+  color: #29b6f6;
+  font-family: 'Inter', sans-serif;
+  margin-top: 24px;
+  letter-spacing: 0.1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-12__ring {
+    animation: none;
+    opacity: 0.3;
+    transform: scale(1);
+  }
 }

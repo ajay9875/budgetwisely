@@ -19,6 +19,11 @@ body{
     width: 300px;
 }
 
+.auth-container button:disabled { 
+    background: #9ca3af; 
+    cursor: not-allowed; 
+}
+
 .auth-container h2 {
     margin-bottom: 20px;
 }

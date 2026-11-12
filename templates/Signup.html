@@ -13,6 +13,7 @@
     .input-icon-group input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
     .auth-container button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; }
     .auth-container button:hover { background: #4338ca; }
+    .auth-container button:disabled { background: #9ca3af; cursor: not-allowed; } /* 👈 ADD THIS LINE */
     .auth-links { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; }
     .auth-links a { color: #4f46e5; text-decoration: none; font-weight: 500; }
 </style>
@@ -22,8 +23,7 @@
 <div class="auth-container">
     <h2><i class="fa-solid fa-user-plus" style="color: #4f46e5; margin-right: 8px;"></i> Create Account</h2>
     
-    <form method="POST" action="{{ url_for('signup') }}">
-        <div class="input-icon-group">
+        <form id="signup-form" method="POST" action="{{ url_for('signup') }}">        <div class="input-icon-group">
             <i class="fa-solid fa-user"></i>
             <input type="text" id="name" name="name" placeholder="Full Name" required>
         </div>
@@ -43,13 +43,56 @@
             <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm Password" required>
         </div>
 
-        <button type="submit"><i class="fa-solid fa-check"></i> Register</button>
-    </form>
-    
+        <!-- Change the button to have an ID -->
+        <button type="submit" id="signup-btn"><i class="fa-solid fa-check"></i> Register</button>    </form>
+            
     <div class="auth-links">
         <p style="margin-bottom: 0.5rem; color: #64748b;">Already have an account? <a href="{{ url_for('login') }}">Log In</a></p>
         <p style="margin-bottom: 0.5rem; color: #64748b;">Forgot password? <a href="{{ url_for('forgot_password') }}">Reset It</a></p>
         <a href="{{ url_for('default') }}" style="color: #64748b;"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('signup-form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    
+    const btn = document.getElementById('signup-btn');
+    const originalBtnHtml = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
+    btn.disabled = true;
+
+    if(typeof showLoadingSpinner === 'function') showLoadingSpinner('Creating Account...');
+
+    const formData = new FormData(this);
+
+    fetch("{{ url_for('signup') }}", {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+
+        if (data.success) {
+            // Success: Go to login page
+            window.location.href = data.redirect;
+        } else {
+            // Failure: Reload the signup page so Flask renders the flash message
+            window.location.reload(); 
+        }
+    })
+    .catch(error => {
+        console.error("Fetch error:", error);
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+        alert("Network error. Please try again.");
+        btn.innerHTML = originalBtnHtml;
+        btn.disabled = false;
+    });
+});
+</script>
 {% endblock %}

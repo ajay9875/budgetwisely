@@ -12,8 +12,9 @@
     .input-icon-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #64748b; }
     .input-icon-group input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box; }
     .input-icon-group input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
-    .auth-container button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; }
+    .auth-container button { width: 100%; padding: 0.75rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 8px; }
     .auth-container button:hover { background: #4338ca; }
+    .auth-container button:disabled { background: #9ca3af; cursor: not-allowed; }
     .auth-links { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; }
     .auth-links a { color: #4f46e5; text-decoration: none; font-weight: 500; }
 </style>
@@ -24,16 +25,62 @@
     <h2><i class="fa-solid fa-key" style="color: #4f46e5; margin-right: 8px;"></i> Forgot Password</h2>
     <p>Enter your registered email address and we'll send you an OTP to reset your password.</p>
     
-    <form method="POST">
+    <form id="forgot-form" method="POST">
         <div class="input-icon-group">
             <i class="fa-solid fa-envelope"></i>
             <input type="email" name="email" placeholder="Registered email" required>
         </div>
-        <button type="submit"><i class="fa-solid fa-paper-plane"></i> Send OTP</button>
+        
+        <button type="submit" id="forgot-btn">
+            <i class="fa-solid fa-paper-plane"></i> Send OTP
+        </button>
     </form>
     
     <div class="auth-links">
         <a href="{{ url_for('default') }}" style="color: #64748b;"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('forgot-form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    
+    const btn = document.getElementById('forgot-btn');
+    const originalBtnHtml = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending OTP...';
+    btn.disabled = true;
+
+    if(typeof showLoadingSpinner === 'function') showLoadingSpinner('Sending OTP...');
+
+    const formData = new FormData(this);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+
+        if (data.success) {
+            // Success: Go to OTP page
+            window.location.href = data.redirect;
+        } else {
+            // Failure: Reload the page so Flask renders the flash message natively
+            window.location.reload(); 
+        }
+    })
+    .catch(error => {
+        console.error("Fetch error:", error);
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+        alert("Network error. Please try again.");
+        btn.innerHTML = originalBtnHtml;
+        btn.disabled = false;
+    });
+});
+</script>
 {% endblock %}

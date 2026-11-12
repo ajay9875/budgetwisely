@@ -152,6 +152,20 @@
         margin-left: auto;
         flex-wrap: wrap;
     }
+    /* 🟢 Serial Number Badge */
+.serial-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
 
     /* Tablet & Mobile Adjustments */
     @media (max-width: 991px) {
@@ -214,7 +228,7 @@
         <span class="breadcrumb-current">Yearly Budget Overview</span>
     </div>
 
-        <!-- ========================================== -->
+    <!-- ========================================== -->
     <!-- 🟢 LIFETIME FINANCIAL OVERVIEW HEADING      -->
     <!-- ========================================== -->
     <div class="lifetime-heading">
@@ -225,6 +239,14 @@
     <!-- ========================================== -->
     <!-- 🟢 LIFETIME FINANCIAL OVERVIEW CARDS       -->
     <!-- ========================================== -->
+    <!-- Add this right above the Lifetime Summary cards -->
+    <div style="text-align: right; margin-bottom: 1rem;">
+        <a href="{{ url_for('download_all_budgets_pdf', scope='lifetime') }}" 
+        onclick="downloadPDF(event, this.href, this)" 
+        class="btn-primary" style="width: auto; padding: 0.5rem 1rem; text-decoration: none;">
+            <i class="fa-solid fa-file-pdf"></i> Download Lifetime Report
+        </a>
+    </div>
     <section class="lifetime-summary">
         <div class="lifetime-card lifetime-income">
             <div class="lifetime-card-header">
@@ -261,6 +283,11 @@
                         {% if group.is_uncategorized %}<i class="fa-solid fa-folder-open"></i> Uncategorized{% else %}<i class="fa-regular fa-calendar-days"></i> {{ group.label }}{% endif %}
                     </h2>
                     <span class="year-subtitle">YEARLY FINANCIAL OVERVIEW</span>
+                    <a href="{{ url_for('download_all_budgets_pdf', scope='yearly', year=group.label) }}" 
+                    onclick="downloadPDF(event, this.href, this)" 
+                    class="btn-primary" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-top: 5px; text-decoration: none;">
+                        <i class="fa-solid fa-download"></i> Download {{ group.label }} Report
+                    </a>
                 </div>
                 <div class="year-divider"></div>
             </section>
@@ -292,11 +319,18 @@
                 <div class="budget-box">
                     <div class="budget-box-header">
                         <h3><i class="fa-regular fa-calendar-days"></i> {{ budget.month_name }}</h3>
-                        <form method="POST" action="/delete_month" class="delete_month" onsubmit="return confirm('Delete this month?');">
+                        <form method="POST" action="/delete_month" class="delete_month" onsubmit="if(confirm('Delete this month?')) { handleFormSubmit(event); } else { return false; }">                            
                             <input type="hidden" name="month_name" value="{{ budget.month_name }}">
                             <input type="hidden" name="target_page" value="all_budgets">
-                            <button type="submit" class="btn-delete-month"><i class="fa-solid fa-trash-can"></i> Delete Month</button>
+                            <button type="submit" class="btn-delete-month"><i class="fa-solid fa-trash-can"></i></button>
                         </form>
+                    </div>
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <a href="{{ url_for('download_all_budgets_pdf', scope='monthly', month=budget.month_name) }}" 
+                        onclick="downloadPDF(event, this.href, this)" 
+                        class="btn-primary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; text-decoration: none; margin: 0 auto !important;">
+                            <i class="fa-solid fa-download"></i> Download {{ budget.month_name }} Report
+                        </a>
                     </div>
 
                     <div class="summary-cards inner-summary">
@@ -326,14 +360,52 @@
                         </div>
                     </div>
 
+                    <!-- 📊 Charts for this specific month -->
+                    <div class="charts-grid" style="margin: 2rem 0; padding: 0; display: flex; flex-wrap: wrap; gap: 1.5rem;">
+                        
+                        <!-- Full Width Bar Chart -->
+                        <div class="chart-container" style="flex: 1 1 100%; padding: 15px;">
+                            <div class="chart-title">Budget Breakdown</div>
+                            <div style="position: relative; height: 300px; width: 100%;">
+                                <canvas id="budgetChart-{{ group.label | replace(' ', '-') }}-{{ loop.index }}"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Half Width Doughnut 1 -->
+                        <div class="chart-container" style="flex: 1 1 300px; padding: 15px;">
+                            <div class="chart-title">Income Allocation</div>
+                            <div style="position: relative; height: 250px; width: 100%;">
+                                <canvas id="allocationChart-{{ group.label | replace(' ', '-') }}-{{ loop.index }}"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Half Width Doughnut 2 -->
+                        <div class="chart-container" style="flex: 1 1 300px; padding: 15px;">
+                            <div class="chart-title">Expense Categories</div>
+                            {% if budget.category_totals and budget.category_totals|length > 0 %}
+                                <div style="position: relative; height: 250px; width: 100%;">
+                                    <canvas id="expensesChart-{{ group.label | replace(' ', '-') }}-{{ loop.index }}"></canvas>
+                                </div>
+                            {% else %}
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 250px; text-align: center; padding: 1rem;">
+                                    <div style="background: var(--bg-body); width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                        <i class="fa-solid fa-chart-pie" style="font-size: 1.25rem; color: var(--text-muted);"></i>
+                                    </div>
+                                    <h4 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 0.95rem; font-weight: 600;">No Categories Yet</h4>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; max-width: 220px; line-height: 1.5;">
+                                        Add an expense to see your category breakdown here.
+                                    </p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
                     <div class="expenses" style="margin-bottom: 20px !important;">
                         <div class="expense-header">
                             <strong><i class="fa-solid fa-list-check"></i> Expense Breakdown</strong>
                             <button type="button" class="btn-add-expense" onclick="toggleExpenseForm('form-{{ group.label }}-{{ loop.index }}')"><i class="fa-solid fa-plus"></i> Add</button>
                         </div>
                         <div id="form-{{ group.label }}-{{ loop.index }}" class="add-expense-form-container" style="display: none;">
-                            <form method="POST" action="/add_data" class="inline-add-form">
-                                <input type="hidden" name="month_name" value="{{ budget.month_name }}">
+                            <form method="POST" action="/add_data" class="inline-add-form" onsubmit="handleFormSubmit(event)">                                <input type="hidden" name="month_name" value="{{ budget.month_name }}">
                                 <input type="hidden" name="target_page" value="all_budgets">
                                 <div class="form-inputs">
                                     <div class="input-group"><label>Category</label><input type="text" name="exp_category" required></div>
@@ -348,14 +420,16 @@
                         </div>
 
                         <div class="expense-details">
-                            <h3 style="margin-top: 0; font-size: 1.05rem;"><i class="fa-solid fa-list-check"></i> Details</h3>
                         {% if budget.expenses %} 
+                            <h3 style="margin-top: 0; font-size: 1.05rem;"><i class="fa-solid fa-list-check"></i> Details</h3>
+
                             <div style="overflow-x: auto;">
                                 <table class="expense-table">
-                                    <thead><tr><th>Category</th><th>Amount</th><th>Distribution</th><th>Date</th><th>Actions</th></tr></thead>
+                                    <thead><tr><th>#</th><th>Category</th><th>Amount</th><th>Distribution</th><th>Date</th><th>Actions</th></tr></thead>
                                     <tbody>
                                     {% for expense in budget.expenses %}
                                         <tr>
+                                            <td><span class="serial-badge">{{ loop.index }}</span></td>
                                             <td>{{ expense.expense_category if expense.expense_category else expense.category }}</td>
                                             <td>₹{{ "%.2f"|format(expense.expense_amount if expense.expense_amount else expense.amount) }}</td>
                                             <td><span class="percentage">{{ "%.1f"|format(((expense.expense_amount if expense.expense_amount else expense.amount) / budget.monthly_income) * 100 if budget.monthly_income > 0 else 0) }}%</span></td>
@@ -363,8 +437,7 @@
                                             <td>
                                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                                                     <button type="button" class="icon-btn" onclick="toggleExpenseForm('edit-expense-{{ expense.id }}')"><i class="fa-solid fa-pen"></i></button>
-                                                    <form method="POST" action="/delete_expense" onsubmit="confirmDeleteExpense('{{ expense.id }}', '{{ expense.month_name }}'); return false;" style="display: inline;">
-                                                        <input type="hidden" name="expense_id" value="{{ expense.id }}">
+                                                    <form method="POST" action="/delete_expense" onsubmit="if(confirm('Delete this expense?')) { handleFormSubmit(event); } else { return false; }" style="display: inline;">                                                        <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                                         <input type="hidden" name="target_page" value="all_budgets">
                                                         <button type="submit" class="icon-btn"><i class="fa-solid fa-trash-can" style="color: var(--danger);"></i></button>
                                                     </form>
@@ -372,9 +445,8 @@
                                             </td>
                                         </tr>
                                         <tr id="edit-expense-{{ expense.id }}" style="display: none; background-color: #f8f9fa;">
-                                            <td colspan="5" style="padding: 1rem;">
-                                                <form method="POST" action="/edit_expense">
-                                                    <input type="hidden" name="expense_id" value="{{ expense.id }}">
+                                            <td colspan="6" style="padding: 1rem;">
+                                                <form method="POST" action="/edit_expense" onsubmit="handleFormSubmit(event)">                                                    <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                                     <input type="hidden" name="month_name" value="{{ expense.month_name }}"> <!-- ✅ FIXED -->
                                                     <input type="hidden" name="target_page" value="all_budgets"> <!-- ✅ FIXED -->
                                                     
@@ -400,20 +472,36 @@
                                     </tbody>
                                 </table>
                             </div>
-                            {% else %}
-                            <p style="color: var(--text-muted); font-size: 0.9rem;">No expenses logged yet.</p>
-                            {% endif %}
                             <p class="small-text"><i class="fa-solid fa-arrows-rotate"></i> Last updated: {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
+
+                            {% else %}
+                            <div style="text-align: center; padding: 3rem 1rem; background: var(--bg-body); border-radius: var(--radius-md); border: 1px dashed var(--border-color); margin-top: 1rem;">
+                                <div style="background: var(--bg-card); width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; box-shadow: var(--shadow);">
+                                    <i class="fa-solid fa-receipt" style="font-size: 1.25rem; color: var(--text-muted);"></i>
+                                </div>
+                                <h4 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 0.95rem; font-weight: 600;">No Expenses Yet</h4>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; max-width: 320px; margin-left: auto; margin-right: auto; line-height: 1.5;">
+                                    Click the <strong>+ Add</strong> button above on the right to log your first expense for this month.
+                                </p>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             {% endfor %}
         {% endfor %}
     {% else %}
-        <div class="no-data">
-            <i class="fa-solid fa-folder-open empty-icon"></i>
-            <p>No budget data found. Please add your first budget.</p>
-            <a href="{{ url_for('dashboard') }}" class="btn-primary" style="margin-top: 1rem; display: inline-block;"><i class="fa-solid fa-plus"></i> Add Budget</a>
+        <div style="text-align: center; padding: 5rem 2rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-color); box-shadow: var(--shadow); margin: 2rem 0;">
+            <div style="background: var(--bg-body); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto;">
+                <i class="fa-solid fa-folder-open" style="font-size: 2rem; color: var(--text-muted);"></i>
+            </div>
+            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem; font-weight: 700;">No Budgets Found</h3>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0 auto 1.5rem auto; max-width: 400px; line-height: 1.6;">
+                It looks like you haven't created any budgets yet. Start tracking your income and expenses by creating your first monthly budget.
+            </p>
+            <a href="{{ url_for('dashboard') }}" class="btn-primary" style="width: auto; padding: 0.75rem 1.5rem; display: inline-flex; text-decoration: none;">
+                <i class="fa-solid fa-plus"></i> Create Your First Budget
+            </a>
         </div>
     {% endif %}
 </main>
@@ -424,47 +512,126 @@
     function toggleExpenseForm(formId) {
         const form = document.getElementById(formId);
         if (form) {
-            // Check if it's a table row (for edit) or a div (for add)
-            if (form.tagName === 'TR') {
-                form.style.display = (form.style.display === "none" || form.style.display === "") ? "table-row" : "none";
-            } else {
-                form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none";
-            }
+            form.style.display = (form.style.display === "none" || form.style.display === "") ? (form.tagName === 'TR' ? "table-row" : "block") : "none";
         }
-    }    function toggleIncomeForm(formId) { const form = document.getElementById(formId); if (form) form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none"; }
-
-    const monthSeparatorPlugin = {
-        id: 'monthSeparator',
-        beforeDraw(chart) {
-            if (!chart.chartArea || !chart.scales.x) return;
-            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-            for (let i = 0; i < x.ticks.length - 1; i++) {
-                const midX = (x.getPixelForTick(i) + x.getPixelForTick(i + 1)) / 2;
-                ctx.save(); ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.moveTo(midX, top); ctx.lineTo(midX, bottom); ctx.stroke(); ctx.restore();
-            }
-        }
-    };
+    }
+    
+    function toggleIncomeForm(formId) { 
+        const form = document.getElementById(formId); 
+        if (form) form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none"; 
+    }
 
     document.addEventListener("DOMContentLoaded", function () {
         const groups = {{ budgets_by_year | tojson }};
         if (!Array.isArray(groups) || groups.length === 0) return;
-        groups.forEach((group, idx) => {
-            const canvas = document.getElementById(`budgetChart-${idx + 1}`);
-            if (!canvas || !Array.isArray(group.budgets)) return;
-            const series = [...group.budgets].reverse();
-            new Chart(canvas.getContext("2d"), {
-                type: "bar",
-                data: {
-                    labels: series.map(b => b.month_word || b.month_name),
-                    datasets: [
-                        { label: "Income", data: series.map(b => Number(b.monthly_income) || 0), backgroundColor: "#4F46E5", borderRadius: 4 },
-                        { label: "Expenses", data: series.map(b => Number(b.total_expenses) || 0), backgroundColor: "#EF4444", borderRadius: 4 },
-                        { label: "Savings", data: series.map(b => Number(b.savings) || 0), backgroundColor: series.map(b => b.savings < 0 ? "#EF4444" : "#10B981"), borderRadius: 4 }
-                    ]
-                },
-                plugins: [monthSeparatorPlugin],
-                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: `${group.label} Trend` } }, scales: { y: { beginAtZero: true } } }
+
+        // Global Chart Defaults for the Dashboard Look
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        const darkThemeScales = { 
+            x: { ticks: { color: '#64748b' }, grid: { display: false }, border: { display: false } }, 
+            y: { beginAtZero: true, ticks: { color: '#64748b' }, grid: { color: '#f1f5f9' }, border: { display: false } } 
+        };
+
+        groups.forEach((group) => {
+            // Setup monthly charts
+            group.budgets.forEach((budget, idx) => {
+                const safeGroup = group.label.replace(/\s+/g, '-');
+                const chartIdSuffix = `${safeGroup}-${idx + 1}`;
+
+                // 1. Budget Breakdown Bar Chart
+                const barCanvas = document.getElementById(`budgetChart-${chartIdSuffix}`);
+                if (barCanvas) {
+                    new Chart(barCanvas.getContext('2d'), {
+                        type: 'bar',
+                        data: { 
+                            labels: ['Income', 'Expenses', 'Savings'], 
+                            datasets: [{ 
+                                label: 'Amount (₹)', 
+                                data: [budget.monthly_income, budget.total_expenses, budget.savings], 
+                                backgroundColor: [
+                                    '#4F46E5', 
+                                    '#EF4444', 
+                                    budget.savings >= 0 ? '#10B981' : '#EF4444'
+                                ], 
+                                borderRadius: 4, 
+                                borderSkipped: false,
+                                barPercentage: 0.6
+                            }] 
+                        },
+                        options: { 
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: darkThemeScales
+                        }
+                    });
+                }
+
+                // 2. Income Allocation Doughnut Chart
+                const allocCanvas = document.getElementById(`allocationChart-${chartIdSuffix}`);
+                if (allocCanvas) {
+                    new Chart(allocCanvas.getContext('2d'), {
+                        type: 'doughnut',
+                        data: { 
+                            labels: ['Expenses', 'Savings'], 
+                            datasets: [{ 
+                                data: [budget.total_expenses, budget.savings > 0 ? budget.savings : 0], 
+                                backgroundColor: ['#f43f5e', '#10b981'], 
+                                borderWidth: 0
+                            }] 
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } } }
+                        }
+                    });
+                }
+
+                // 3. Expense Categories Doughnut Chart
+                const expCanvas = document.getElementById(`expensesChart-${chartIdSuffix}`);
+                if (expCanvas && budget.category_totals) {
+                    const labels = Object.keys(budget.category_totals);
+                    const data = Object.values(budget.category_totals);
+                    
+                    new Chart(expCanvas.getContext('2d'), {
+                        type: 'doughnut',
+                        data: { 
+                            labels: labels, 
+                            datasets: [{ 
+                                data: data, 
+                                backgroundColor: [
+                                    '#818cf8', '#f472b6', '#fbbf24', '#34d399', '#a78bfa', '#22d3ee',
+                                    '#f87171', '#38bdf8', '#a3e635', '#c084fc', '#fb923c', '#2dd4bf'
+                                ], 
+                                borderWidth: 0
+                            }] 
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } } }
+                        }
+                    });
+                }
             });
+
+            // Optional: The Yearly Trend Chart above the months
+            const trendCanvas = document.getElementById(`budgetChart-${groups.indexOf(group) + 1}`);
+            if (trendCanvas) {
+                const series = [...group.budgets].reverse();
+                new Chart(trendCanvas.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                        labels: series.map(b => b.month_word || b.month_name),
+                        datasets: [
+                            { label: "Income", data: series.map(b => Number(b.monthly_income) || 0), backgroundColor: "#4F46E5", borderRadius: 4 },
+                            { label: "Expenses", data: series.map(b => Number(b.total_expenses) || 0), backgroundColor: "#EF4444", borderRadius: 4 },
+                            { label: "Savings", data: series.map(b => Number(b.savings) || 0), backgroundColor: series.map(b => b.savings < 0 ? "#EF4444" : "#10B981"), borderRadius: 4 }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: `${group.label} Trend` } }, scales: { y: { beginAtZero: true } } }
+                });
+            }
         });
     });
 </script>

@@ -1,71 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BudgetWisely | Take Control of Your Financial Future</title>
-    
-    <!-- Fonts & Libraries -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Flask Static CSS Links -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Default.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Home.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon/favicon.png') }}">
-    
-    <script src="{{ url_for('static', filename='Javascript/allmessage.js') }}"></script>
-</head>
-<body>
+{% extends "default_base.html" %}
 
-    <!-- Header Navigation (Dark Theme) -->
-    <header class="navbar" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
-        <div class="nav-container">
-            <a href="{{ url_for('default') }}" class="brand-logo" style="color: #ffffff;">
-                <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely Logo">
-                <span>Budget Wisely</span>
-            </a>
-            
-            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation" style="color: #ffffff;">
-                <i class="fa-solid fa-bars"></i>
-            </button>
+{% block title %}BudgetWisely | Take Control of Your Financial Future{% endblock %}
 
-            <div class="nav-wrapper" id="navWrapper">
-                <nav class="nav-links" style="background-color: transparent;">
-                    <a href="landing_page#features" style="color: #cbd5e1;">Features</a>
-                    <a href="landing_page#analytics" style="color: #cbd5e1;">Analytics</a>
-                    <a href="{{ url_for('about_us') }}" style="color: #cbd5e1;">About Us</a>
-                    <a href="{{ url_for('services') }}" style="color: #cbd5e1;">Services</a>
-                    <a href="{{ url_for('contact_us') }}" style="color: #cbd5e1;">Contact</a>
-                </nav>
-
-                <div class="nav-auth">
-                    {% if not session.get('user_id') %}
-                        <a href="{{ url_for('login') }}" class="nav-btn nav-btn-outline" style="color: #ffffff; border-color: #475569;">Log In</a>
-                        <a href="{{ url_for('signup') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Sign Up Free</a>
-                    {% else %}
-                        <a href="{{ url_for('dashboard') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Dashboard</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Flash Messages -->
-    <div class="message-wrapper" style="position: absolute; top: 80px; right: 20px; z-index: 1000; max-width: 350px;">   
-        {% with messages = get_flashed_messages(with_categories=True) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="flash-message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-    </div>  
-
+{% block content %}
     <!-- Hero Section -->
     <section class="hero-section" id="top">
         <div class="hero-content">
@@ -73,7 +10,8 @@
             <h1>Master Your Money with Effortless Precision</h1>
             <p>Track spending, create intuitive budgets, and optimize your personal savings with real-time visual analytics—all in one secure platform.</p>
             <div class="hero-cta">
-                <a href="{{ url_for('signup') }}" class="btn btn-hero-primary"><i class="fa-solid fa-rocket"></i> Get Started Free</a>
+                <!-- Added onclick to trigger the overlay spinner -->
+                <a href="{{ url_for('signup') }}" class="btn btn-hero-primary" onclick="showLoadingSpinner('Preparing Signup...')"><i class="fa-solid fa-rocket"></i> Get Started Free</a>
                 <a href="#analytics" class="btn btn-hero-secondary"><i class="fa-solid fa-chart-pie"></i> Explore Demo</a>
             </div>
         </div>
@@ -207,7 +145,6 @@
                 </ul>
             </div>
             
-            <!-- 👈 NEW VAULT FEATURE -->
             <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-lock"></i></div>
                 <h2>Secure Vault</h2>
@@ -226,75 +163,13 @@
         <div class="cta-inner">
             <h2>Ready to Transform Your Finances?</h2>
             <p>Join thousands of smart planners who are saving more money every single month.</p>
-            <a href="{{ url_for('signup') }}" class="btn btn-cta">Create Your Free Account</a>
+            <a href="{{ url_for('signup') }}" class="btn btn-cta" onclick="showLoadingSpinner('Creating your account...')">Create Your Free Account</a>
         </div>
     </section>
+{% endblock %}
 
-    <!-- Footer (Identical to default_base.html) -->
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-col brand-col">
-                <div class="footer-logo">
-                    <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely">
-                    <span>Budget Wisely</span>
-                </div>
-                <p>Empower your personal financial journey with intelligent budgeting and real-time expense tracking.</p>
-                <p class="footer-location">
-                    <i class="fa-solid fa-location-dot"></i> Hyderabad, Telangana, India
-                </p>
-            </div>
-            <div class="footer-col">
-                <h4>Quick Links</h4>
-                <a href="landing_page#features">Features</a>
-                <a href="landing_page#analytics">Analytics</a>
-                <a href="{{ url_for('about_us') }}">About Us</a>
-                <a href="{{ url_for('services') }}">Services</a>
-            </div>
-            <div class="footer-col">
-                <h4>Account</h4>
-                <a href="{{ url_for('login') }}">Log In</a>
-                <a href="{{ url_for('signup') }}">Sign Up</a>
-                <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
-            </div>
-            <div class="footer-col">
-                <h4>Legal</h4>
-                <a href="{{ url_for('contact_us') }}">Contact Us</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2026 BudgetWisely. All rights reserved.</p>
-        </div>
-    </footer>
-
-    <!-- Mobile Navigation Toggle Script -->
-    <script>
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const navWrapper = document.getElementById('navWrapper');
-        const menuIcon = mobileMenuBtn.querySelector('i');
-
-        mobileMenuBtn.addEventListener('click', () => {
-            navWrapper.classList.toggle('active');
-            if (navWrapper.classList.contains('active')) {
-                menuIcon.classList.remove('fa-bars');
-                menuIcon.classList.add('fa-xmark');
-            } else {
-                menuIcon.classList.remove('fa-xmark');
-                menuIcon.classList.add('fa-bars');
-            }
-        });
-
-        document.querySelectorAll('.nav-wrapper a').forEach(link => {
-            link.addEventListener('click', () => {
-                navWrapper.classList.remove('active');
-                menuIcon.classList.remove('fa-xmark');
-                menuIcon.classList.add('fa-bars');
-            });
-        });
-    </script>
-
-    <!-- Chart Scripts -->
+{% block scripts %}
+    <!-- Only the Chart Scripts go here now -->
     <script>
         // Pie Chart
         const ctx1 = document.getElementById('pieChart').getContext('2d');
@@ -342,5 +217,4 @@
             options: { responsive: true, maintainAspectRatio: false }
         });
     </script>
-</body>
-</html>
+{% endblock %}

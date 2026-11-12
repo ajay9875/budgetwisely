@@ -30,30 +30,6 @@ body {
     min-height: 100vh;
 }
 
-/* --- Global Loading Spinner --- */
-#loading-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    color: white;
-    font-weight: 500;
-}
-.spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid rgba(255, 255, 255, 0.2);
-    border-top-color: #ffffff;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-bottom: 12px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* --- Header / Navigation --- */
 header {
@@ -87,7 +63,7 @@ header {
     height: 40px !important;
     width: 40px !important;
     object-fit: cover;
-    border-radius: 50%;
+    border-radius: 100%;
     border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -165,15 +141,15 @@ header {
     flex-direction: column;
     gap: 2rem;
     padding: 2rem;
-    max-width: 1400px;
+    max-width: 1100px;
     margin: 0 auto;
 }
 
-.left {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
+@media print {
+    /* Hide charts and anything else you don't want in the PDF */
+    .charts-grid, .section-title a, .delete_month {
+        display: none !important;
+    }
 }
 
 .left .calculator { margin-bottom: 0; }
@@ -246,6 +222,14 @@ input:focus, select:focus {
 
 .btn-primary:hover { background-color: var(--primary-hover); }
 
+/* Force the delete_month section to center its content */
+.delete_month {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Ensure the button only takes the width it needs */
 .btn-danger {
     background-color: var(--danger);
     color: white;
@@ -255,6 +239,10 @@ input:focus, select:focus {
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
+    
+    /* ✅ ADD THESE TWO LINES TO MAKE CENTERING WORK */
+    width: fit-content;
+    margin: 0 auto; 
 }
 
 .btn-danger:hover { background-color: #dc2626; }
@@ -301,21 +289,47 @@ input:focus, select:focus {
 
 /* --- Dynamic Chart Containers --- */
 .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* ✅ Centers the boxes horizontally */
     gap: 1.5rem;
     margin: 2rem 0;
 }
 
+/* =========================================
+   Chart Container (Base Style)
+========================================= */
 .chart-container {
-    background: #ffffff;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 1.25rem;
+    /* Layout & Flexbox */
+    flex: 1 1 300px;      /* Allows side-by-side charts */
+    max-width: 420px;     /* Prevents them from getting too wide */
+    display: flex;
+    flex-direction: column;
     position: relative;
+    
+    /* Styling */
+    background: var(--bg-card);
+    border: 1px solid var(--border-color); /* Standardized variable */
+    border-radius: var(--radius-md);       /* Modern rounded corners */
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
 }
 
-.chart-container.full-width { grid-column: 1 / -1; }
+/* New wrapper to control canvas height strictly */
+.chart-canvas-wrapper {
+    position: relative;
+    width: 100%;
+    flex-grow: 1; /* Allows it to grow if needed */
+}
+
+.chart-canvas-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-container.full-width {
+    grid-column: 1 / -1;
+}
 
 .chart-title {
     font-size: 0.95rem;
@@ -444,6 +458,14 @@ footer a:hover {
         align-items: flex-start;
         justify-content: flex-start !important;
     }
+.edit-expense-form-container .edit-expense-action-buttons {
+    display: flex !important; /* 👈 Changed from inline to flex */
+    gap: 10px !important;     /* 👈 Now gap will work perfectly */
+    align-items: center;      /* Optional: keeps buttons vertically centered */
+}
+    .edit-expense-action-buttons .bth-cancel{
+        gap: 10px !important;
+    }
     .expense-table th:nth-child(3), .expense-table td:nth-child(3) { display: none; }
 }
 /* Only if you want to hide the logo text on tiny screens (<= 400px) */
@@ -520,6 +542,21 @@ footer a:hover {
     gap: 0.5rem;
     padding: 0.5rem;
     flex-wrap: wrap;
+}
+
+/* 🟢 Serial Number Badge */
+.serial-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
 }
 
 .edit-expense-action-buttons {

@@ -123,12 +123,421 @@ def never_cache(f):
         return response
     return decorated_function
 
+@app.context_processor
+def inject_session_status():
+    """Expose a real 'is_logged_in' flag to all templates."""
+    expiry_ts = session.get('session_expiry', 0)
+    now_ts = datetime.now().timestamp()
+    user_id = session.get('user_id')
+
+    # Logged in only if user_id exists AND session hasn't expired
+    is_logged_in = bool(user_id) and (now_ts <= expiry_ts)
+
+    return dict(is_logged_in=is_logged_in)
+
+import os
+import pdfkit
+
+# 👇 Safely configure pdfkit (prevents app crash if not installed)
+try:
+    if os.name == 'nt':
+        # Windows: Try default 64-bit path, fallback to 32-bit
+        path_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+        if not os.path.exists(path_wkhtmltopdf):
+            path_wkhtmltopdf = r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
+        config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+    else:
+        # Linux/Mac Path
+        config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+except Exception as e:
+    print(f"⚠️ Warning: wkhtmltopdf not found. PDF export will not work. Error: {e}")
+    config = None
+
+# PDF Options (Single, clean definition)
+pdf_options = {
+    'page-size': 'A4',
+    'margin-top': '15mm',
+    'margin-right': '15mm',
+    'margin-bottom': '15mm',
+    'margin-left': '15mm',
+    'encoding': "UTF-8",
+    'enable-local-file-access': None, # Crucial for CSS/Fonts to load
+    'print-media-type': None          # Forces the browser to use print CSS
+}
+
+# =======================================
+# Download pdf route for Dashboard
+# =======================================
+@app.route("/download_dashboard_pdf")
+def download_dashboard_pdf():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user_id = int(session['user_id'])
+    username = session.get('username', 'user')
+    cleaned_username = username.capitalize()
+    
+    # 1. Fetch EXACTLY like the dashboard route
+    budget_query = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc())
+    selected_month = session.get("selected_month")
+    budget = None
+    if selected_month:
+        budget = budget_query.filter(func.lower(func.trim(UserBudget.month_name)) == selected_month.strip().lower()).first()
+    if not budget:
+        budget = budget_query.first()
+        
+    if not budget:
+        flash("No data to export.", "error")
+        return redirect(url_for('dashboard'))
+
+    # 2. Fetch Expenses
+    expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
+    total_expenses = sum(float(exp.expense_amount) for exp in expenses)
+    savings = float(budget.monthly_income) - total_expenses
+    
+    category_totals = {}
+    for exp in expenses:
+        cat = exp.expense_category
+        amt = float(exp.expense_amount)
+        category_totals[cat] = category_totals.get(cat, 0) + amt
+
+    # 3. Build the dict
+    budget_result = {
+        "month_name": budget.month_name,
+        "monthly_income": float(budget.monthly_income),
+        "total_expenses": total_expenses,
+        "savings": savings,
+        "category_totals": category_totals,
+        "expenses": [{
+            "id": exp.id, "category": exp.expense_category, "amount": float(exp.expense_amount),
+            "dayname": exp.day_name, "date": exp.date
+        } for exp in expenses]
+    }
+
+    # 4. Generate QuickChart Images
+    from urllib.parse import quote
+    
+    # -- Chart 1: Budget Breakdown (Bar Chart) --
+    bar_config = f"""{{
+        type: 'bar',
+        data: {{
+            labels: ['Income', 'Expenses', 'Savings'],
+            datasets: [{{
+                label: 'Amount (₹)',
+                data: [{budget_result['monthly_income']}, {budget_result['total_expenses']}, {budget_result['savings']}],
+                backgroundColor: ['#4F46E5', '#EF4444', '#10B981'],
+                borderRadius: 4,
+                barPercentage: 0.5
+            }}]
+        }},
+        options: {{
+            plugins: {{ legend: {{ display: false }} }},
+            scales: {{ 
+                y: {{ beginAtZero: true }},
+                x: {{ grid: {{ display: false }} }}
+            }}
+        }}
+    }}"""
+    bar_url = f"https://quickchart.io/chart?c={quote(bar_config.replace('\n', '').replace(' ', ''))}&w=500&h=250&bkg=white"
+
+    # -- Chart 2: Income Allocation (Doughnut Chart) --
+    alloc_config = f"""{{
+        type: 'doughnut',
+        data: {{
+            labels: ['Expenses', 'Savings'],
+            datasets: [{{
+                data: [{budget_result['total_expenses']}, {max(0, budget_result['savings'])}],
+                backgroundColor: ['#f43f5e', '#10b981']
+            }}]
+        }},
+        options: {{
+            plugins: {{ legend: {{ position: 'bottom' }} }}
+        }}
+    }}"""
+    alloc_url = f"https://quickchart.io/chart?c={quote(alloc_config.replace('\n', '').replace(' ', ''))}&w=400&h=250&bkg=white"
+
+    # -- Chart 3: Expense Categories (Doughnut Chart) --
+    cat_labels = list(category_totals.keys())
+    cat_values = list(category_totals.values())
+    
+    if cat_labels:
+        pie_config = f"""{{
+            type: 'doughnut',
+            data: {{
+                labels: {cat_labels},
+                datasets: [{{
+                    data: {cat_values},
+                    backgroundColor: ['#818cf8', '#f472b6', '#fbbf24', '#34d399', '#a78bfa', '#22d3ee']
+                }}]
+            }},
+            options: {{
+                plugins: {{ legend: {{ position: 'bottom' }} }}
+            }}
+        }}"""
+        pie_url = f"https://quickchart.io/chart?c={quote(pie_config.replace('\n', '').replace(' ', ''))}&w=400&h=250&bkg=white"
+    else:
+        pie_url = None
+
+    # 5. Render template
+    logo_url = url_for('static', filename='icon/favicon.png', _external=True)
+
+    html = render_template(
+        'pdf_dashboard.html', 
+        budget_result=budget_result, 
+        username=cleaned_username,
+        now=datetime.now(IST),
+        bar_url=bar_url,
+        alloc_url=alloc_url,  # 👈 Add this
+        pie_url=pie_url,
+        logo_url=logo_url
+    )
+        
+    try:
+        pdf = pdfkit.from_string(html, False, options=pdf_options, configuration=config)
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        
+        # e.g., budget_wisely_february_2027_monthly_report_13_Nov_2026_03-42AM
+        safe_month_name = budget.month_name.replace(' ', '_').lower()
+        timestamp = datetime.now(IST).strftime('%d_%b_%Y_%I-%M%p')
+        filename = f"budget_wisely_{safe_month_name}_monthly_report_{timestamp}.pdf"
+        
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        flash(f"PDF generation failed: {str(e)}", "error")
+        return redirect(url_for('dashboard'))
+
+@app.route("/download_all_budgets_pdf")
+def download_all_budgets_pdf():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user_id = int(session['user_id'])
+    username = session.get('username', 'user')
+    cleaned_username = username.capitalize()
+    
+    scope = request.args.get('scope', 'lifetime') 
+    target_year = request.args.get('year')
+    target_month = request.args.get('month')
+
+    MONTH_ORDER = {
+        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+        'September': 9, 'October': 10, 'November': 11, 'December': 12
+    }
+
+    all_user_budgets = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc()).all()
+    if not all_user_budgets:
+        flash("No data to export.", "error")
+        return redirect(url_for('all_budgets'))
+
+    # 1. Build the exact same structure as the website
+    groups = {}
+    uncategorized = []
+
+    for budget in all_user_budgets:
+        expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc()).all()
+        expense_items = []
+        total_expenses = 0.0
+        
+        category_totals = {}
+        for exp in expenses:
+            amount = float(exp.expense_amount)
+            expense_items.append({
+                "category": exp.expense_category, "amount": amount,
+                "dayname": exp.day_name, "date": exp.date
+            })
+            total_expenses += amount
+            category_totals[exp.expense_category] = category_totals.get(exp.expense_category, 0) + amount
+
+        savings = float(budget.monthly_income) - total_expenses
+        raw_month = (budget.month_name or "").strip()
+        parts = raw_month.split()
+        month_word = parts[0] if parts else ""
+        year_val = None
+        for token in parts[1:]:
+            if token.isdigit():
+                year_val = int(token)
+                break
+
+        record = {
+            "month_name": raw_month, "month_word": month_word, "month_num": MONTH_ORDER.get(month_word, 0),
+            "year": year_val, "monthly_income": float(budget.monthly_income),
+            "total_expenses": total_expenses, "savings": savings,
+            "category_totals": category_totals, "expenses": expense_items
+        }
+
+        if year_val is None:
+            uncategorized.append(record)
+        else:
+            groups.setdefault(year_val, []).append(record)
+
+    budgets_by_year = []
+    for year in sorted(groups.keys(), reverse=True):
+        year_budgets = sorted(groups[year], key=lambda b: (b["month_num"], b["month_name"]), reverse=True)
+        total_income = sum(b["monthly_income"] for b in year_budgets)
+        total_exp = sum(b["total_expenses"] for b in year_budgets)
+        
+        budgets_by_year.append({
+            "label": str(year), "year": year, "is_uncategorized": False, "budgets": year_budgets,
+            "total_income": total_income, "total_expenses": total_exp, "total_savings": total_income - total_exp
+        })
+
+    if uncategorized:
+        uncategorized.sort(key=lambda b: (b["month_num"], b["month_name"]), reverse=True)
+        total_income = sum(b["monthly_income"] for b in uncategorized)
+        total_exp = sum(b["total_expenses"] for b in uncategorized)
+        budgets_by_year.append({
+            "label": "Uncategorized", "year": None, "is_uncategorized": True, "budgets": uncategorized,
+            "total_income": total_income, "total_expenses": total_exp, "total_savings": total_income - total_exp
+        })
+
+    lifetime_income = sum(g['total_income'] for g in budgets_by_year)
+    lifetime_expenses = sum(g['total_expenses'] for g in budgets_by_year)
+    lifetime_savings = lifetime_income - lifetime_expenses
+
+    # 2. Filter based on scope
+    filtered_groups = []
+    for group in budgets_by_year:
+        if scope == 'lifetime':
+            filtered_groups.append(group)
+        elif scope == 'yearly' and str(group['label']) == str(target_year):
+            filtered_groups.append(group)
+        elif scope == 'monthly':
+            # Only keep the specific month
+            matching_budgets = [b for b in group['budgets'] if b['month_name'].lower() == target_month.lower()]
+            if matching_budgets:
+                filtered_groups.append({
+                    **group, "budgets": matching_budgets,
+                    "total_income": matching_budgets[0]['monthly_income'],
+                    "total_expenses": matching_budgets[0]['total_expenses'],
+                    "total_savings": matching_budgets[0]['savings']
+                })
+
+    if not filtered_groups:
+        flash("No data found for this scope.", "error")
+        return redirect(url_for('all_budgets'))
+
+    # 3. Generate QuickCharts for all levels
+    from urllib.parse import quote
+    
+    def generate_bar_chart(labels, data, colors=None):
+        # Use default colors if none passed
+        if not colors:
+            colors = "['#4F46E5', '#EF4444', '#10B981']"
+
+        config = f"""{{
+            type: 'bar',
+            data: {{
+                labels: {labels},
+                datasets: [{{
+                    label: 'Amount (₹)',
+                    data: {data},
+                    backgroundColor: {colors},
+                    borderRadius: 4,
+                    barPercentage: 0.5
+                }}]
+            }},
+            options: {{ 
+                plugins: {{ legend: {{ display: false }} }}, 
+                scales: {{ 
+                    y: {{ beginAtZero: true }},
+                    x: {{ grid: {{ display: false }} }}
+                }} 
+            }}
+        }}"""
+        return f"https://quickchart.io/chart?c={quote(config.replace(chr(10), '').replace(' ', ''))}&w=600&h=250&bkg=white"
+
+    def generate_doughnut_chart(labels, data, colors):
+        config = f"""{{
+            type: 'doughnut',
+            data: {{ labels: {labels}, datasets: [{{ data: {data}, backgroundColor: {colors} }}] }},
+            options: {{ plugins: {{ legend: {{ position: 'bottom' }} }} }}
+        }}"""
+        return f"https://quickchart.io/chart?c={quote(config.replace(chr(10), '').replace(' ', ''))}&w=400&h=250&bkg=white"
+
+    # Attach chart URLs to the data
+    for group in filtered_groups:
+        # Yearly Trend Chart (if more than 1 month)
+        months = [b['month_word'] for b in reversed(group['budgets'])]
+        inc = [b['monthly_income'] for b in reversed(group['budgets'])]
+        exp = [b['total_expenses'] for b in reversed(group['budgets'])]
+        sav = [b['savings'] for b in reversed(group['budgets'])]
+        if len(months) > 1:
+            group['trend_chart_url'] = generate_bar_chart(months, inc, exp, sav)
+
+        # Monthly Charts
+        for b in group['budgets']:
+            # Bar Chart (Single dataset, 3 bars)
+            b['bar_url'] = generate_bar_chart(
+                "['Income', 'Expenses', 'Savings']", 
+                f"[{b['monthly_income']}, {b['total_expenses']}, {b['savings']}]",
+                "['#4F46E5', '#EF4444', '#10B981']"
+            )
+            # Income Allocation Chart
+            b['alloc_url'] = generate_doughnut_chart(
+                "['Expenses', 'Savings']", 
+                f"[{b['total_expenses']}, {max(0, b['savings'])}]",
+                "['#f43f5e', '#10b981']"
+            )
+            # Category Chart
+            if b['category_totals']:
+                cat_labels = list(b['category_totals'].keys())
+                cat_vals = list(b['category_totals'].values())
+                b['pie_url'] = generate_doughnut_chart(
+                    str(cat_labels), str(cat_vals),
+                    "['#818cf8', '#f472b6', '#fbbf24', '#34d399', '#a78bfa', '#22d3ee']"
+                )
+
+    # 4. Render Template
+    logo_url = url_for('static', filename='icon/favicon.png', _external=True)
+    
+    html = render_template(
+        'pdf_all_budgets.html',
+        groups=filtered_groups,
+        lifetime_income=lifetime_income,
+        lifetime_expenses=lifetime_expenses,
+        lifetime_savings=lifetime_savings,
+        scope=scope,
+        username=cleaned_username,
+        now=datetime.now(IST),
+        logo_url=logo_url
+    )
+    
+    try:
+        pdf = pdfkit.from_string(html, False, options=pdf_options, configuration=config)
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        
+        timestamp = datetime.now(IST).strftime('%d_%b_%Y_%I-%M%p')
+        
+        if scope == 'monthly':
+            safe_month = target_month.replace(' ', '_').lower()
+            filename = f"budget_wisely_{safe_month}_monthly_report_{timestamp}.pdf"
+        elif scope == 'yearly':
+            filename = f"budget_wisely_{target_year}_yearly_report_{timestamp}.pdf"
+        else:
+            filename = f"budget_wisely_lifetime_report_{timestamp}.pdf"
+        
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        flash(f"PDF generation failed: {str(e)}", "error")
+        return redirect(url_for('all_budgets'))
+    
 # Application Routes
 @app.route('/')
 def default():
-    if 'user_id' not in session:
-        return redirect(url_for('landing_page'))
-    return redirect(url_for('dashboard'))
+    expiry_ts = session.get('session_expiry', 0)
+    now_ts = datetime.now().timestamp()
+    user_id = session.get('user_id')
+
+    if user_id and now_ts <= expiry_ts:
+        return redirect(url_for('dashboard'))
+
+    session.clear()  # clean any stale cookie
+    return redirect(url_for('landing_page'))
 
 @app.route('/landing_page', methods=['GET'])
 def landing_page():
@@ -181,11 +590,21 @@ def dashboard():
         expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
         total_expenses = sum(float(exp.expense_amount) for exp in expenses)
         savings = float(budget.monthly_income) - total_expenses
+
+        # 👇 ADD THIS BLOCK HERE 👇
+        category_totals = {}
+        for exp in expenses:
+            cat = exp.expense_category
+            amt = float(exp.expense_amount)
+            category_totals[cat] = category_totals.get(cat, 0) + amt
+        # 👆 END OF NEW BLOCK 👆
+
         budget_result = {
             "month_name": budget.month_name,
             "monthly_income": float(budget.monthly_income),
             "total_expenses": total_expenses,
             "savings": savings,
+            "category_totals": category_totals, # 👈 ADD THIS LINE
             "expenses": [{
                 "id": exp.id,
                 "category": exp.expense_category,
@@ -201,6 +620,207 @@ def dashboard():
                            username=user.name,
                            budget_result=budget_result, 
                            expiry_timestamp=int(expiry_timestamp * 1000)) # Pass milliseconds for JS
+
+@app.route("/all-budgets", methods=["GET"])
+@never_cache
+def all_budgets():
+    if 'user_id' not in session:
+        flash('Session expired! Please login again', 'error')
+        return redirect(url_for('login'))
+
+    try:
+        user_id = int(session['user_id'])
+    except (ValueError, TypeError):
+        session.clear()
+        return redirect(url_for('login'))
+
+    username = session.get('username')
+    expiry_time = session.get('session_expiry', 0)
+    current_time = datetime.now().timestamp()
+
+    if current_time > expiry_time:
+        session.clear()
+        flash('Session time expired! Please login again', 'error')
+        return redirect(url_for('login'))
+
+    MONTH_ORDER = {
+        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+        'September': 9, 'October': 10, 'November': 11, 'December': 12
+    }
+
+    try:
+        all_user_budgets = (
+            UserBudget.query
+            .filter_by(user_id=user_id)
+            .order_by(UserBudget.id.desc())
+            .all()
+        )
+
+        if not all_user_budgets:
+            flash("No budget data found! Please add a month first.", "error")
+            # ✅ Pass empty lifetime_stats when no data
+            empty_stats = {
+                "total_income": 0.0,
+                "total_expenses": 0.0,
+                "total_savings": 0.0,
+                "expenses_percentage": 0.0,
+                "savings_percentage": 0.0,
+            }
+            return render_template("Allbudgets.html", username=username, budgets_by_year=[], lifetime_stats=empty_stats)
+
+        # ---- Build per-budget records + group by year ----
+        groups = {}
+        uncategorized = []
+
+        for budget in all_user_budgets:
+            expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
+
+            expense_items = []
+            total_expenses = 0.0
+            for exp in expenses:
+                amount = float(exp.expense_amount)
+                expense_items.append({
+                    "id": exp.id,
+                    "category": exp.expense_category,
+                    "expense_category": exp.expense_category,
+                    "amount": amount,
+                    "expense_amount": amount,
+                    "day_name": exp.day_name,
+                    "dayname": exp.day_name,
+                    "month_name": exp.month_name,
+                    "date": exp.date
+                })
+                total_expenses += amount
+
+            savings = float(budget.monthly_income) - total_expenses
+
+            expense_percentages = []
+            if float(budget.monthly_income) > 0:
+                expense_percentages = [
+                    {
+                        "category": item["category"],
+                        "percentage": round((item["amount"] / float(budget.monthly_income)) * 100, 2)
+                    }
+                    for item in expense_items
+                ]
+
+            # 👇 ADD THIS BLOCK HERE 👇
+            category_totals = {}
+            for item in expense_items:
+                cat = item["category"]
+                amt = item["amount"]
+                category_totals[cat] = category_totals.get(cat, 0) + amt
+            # 👆 END OF NEW BLOCK 👆
+
+            raw_month = (budget.month_name or "").strip()
+            parts = raw_month.split()
+            month_word = parts[0] if parts else ""
+            year_val = None
+            for token in parts[1:]:
+                if token.isdigit():
+                    year_val = int(token)
+                    break
+
+            record = {
+                "id": budget.id,
+                "month_name": raw_month,
+                "month_word": month_word,
+                "month_num": MONTH_ORDER.get(month_word, 0),
+                "year": year_val,
+                "monthly_income": float(budget.monthly_income),
+                "total_expenses": total_expenses,
+                "savings": savings,
+                "savings_percentage": round((savings / float(budget.monthly_income)) * 100, 2)
+                                     if float(budget.monthly_income) > 0 else 0,
+                "category_totals": category_totals, # 👈 ADD THIS LINE
+                "expenses": expense_items,
+                "expense_percentages": expense_percentages
+            }
+
+            if year_val is None:
+                uncategorized.append(record)
+            else:
+                groups.setdefault(year_val, []).append(record)
+
+        # ---- Build the final ordered structure ----
+        budgets_by_year = []
+
+        for year in sorted(groups.keys(), reverse=True):
+            year_budgets = groups[year]
+
+            year_budgets.sort(
+                key=lambda b: (b["month_num"], b["id"]),
+                reverse=True
+            )
+
+            total_income = sum(b["monthly_income"] for b in year_budgets)
+            total_exp = sum(b["total_expenses"] for b in year_budgets)
+            total_sav = total_income - total_exp
+
+            budgets_by_year.append({
+                "label": str(year),
+                "year": year,
+                "is_uncategorized": False,
+                "budgets": year_budgets,
+                "total_income": total_income,
+                "total_expenses": total_exp,
+                "total_savings": total_sav,
+                "expenses_percentage": round((total_exp / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
+                "savings_percentage": round((total_sav / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
+            })
+
+        if uncategorized:
+            uncategorized.sort(key=lambda b: (b["month_num"], b["id"]), reverse=True)
+            total_income = sum(b["monthly_income"] for b in uncategorized)
+            total_exp = sum(b["total_expenses"] for b in uncategorized)
+            total_sav = total_income - total_exp
+            budgets_by_year.append({
+                "label": "Uncategorized",
+                "year": None,
+                "is_uncategorized": True,
+                "budgets": uncategorized,
+                "total_income": total_income,
+                "total_expenses": total_exp,
+                "total_savings": total_sav,
+                "expenses_percentage": round((total_exp / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
+                "savings_percentage": round((total_sav / total_income) * 100, 2)
+                                      if total_income > 0 else 0,
+            })
+
+        # ✅ NEW: Calculate Lifetime Stats across all years
+        lifetime_income = sum(g['total_income'] for g in budgets_by_year)
+        lifetime_expenses = sum(g['total_expenses'] for g in budgets_by_year)
+        lifetime_savings = lifetime_income - lifetime_expenses
+
+        lifetime_stats = {
+            "total_income": lifetime_income,
+            "total_expenses": lifetime_expenses,
+            "total_savings": lifetime_savings,
+            "expenses_percentage": round((lifetime_expenses / lifetime_income) * 100, 2)
+                                   if lifetime_income > 0 else 0,
+            "savings_percentage": round((lifetime_savings / lifetime_income) * 100, 2)
+                                  if lifetime_income > 0 else 0,
+        }
+
+        return make_response(render_template(
+            "Allbudgets.html",
+            username=username,
+            budgets_by_year=budgets_by_year,
+            lifetime_stats=lifetime_stats,  # 👈 PASS LIFETIME STATS
+            now=datetime.now()
+        ))
+
+    except Exception as e:
+        app.logger.exception("all_budgets failed")
+        flash(f"Error retrieving budget data: {str(e)}", "error")
+        return render_template("Allbudgets.html", username=username, budgets_by_year=[], lifetime_stats={
+            "total_income": 0.0, "total_expenses": 0.0, "total_savings": 0.0,
+            "expenses_percentage": 0.0, "savings_percentage": 0.0,
+        })
 
 @app.route('/vault', methods=['GET', 'POST'])
 @never_cache
@@ -348,198 +968,6 @@ def vault_delete(item_id):
         db.session.commit()
         flash("Secret deleted.", "success")
     return redirect(url_for('vault'))
-
-@app.route("/all-budgets", methods=["GET"])
-@never_cache
-def all_budgets():
-    if 'user_id' not in session:
-        flash('Session expired! Please login again', 'error')
-        return redirect(url_for('login'))
-
-    try:
-        user_id = int(session['user_id'])
-    except (ValueError, TypeError):
-        session.clear()
-        return redirect(url_for('login'))
-
-    username = session.get('username')
-    expiry_time = session.get('session_expiry', 0)
-    current_time = datetime.now().timestamp()
-
-    if current_time > expiry_time:
-        session.clear()
-        flash('Session time expired! Please login again', 'error')
-        return redirect(url_for('login'))
-
-    MONTH_ORDER = {
-        'January': 1, 'February': 2, 'March': 3, 'April': 4,
-        'May': 5, 'June': 6, 'July': 7, 'August': 8,
-        'September': 9, 'October': 10, 'November': 11, 'December': 12
-    }
-
-    try:
-        all_user_budgets = (
-            UserBudget.query
-            .filter_by(user_id=user_id)
-            .order_by(UserBudget.id.desc())
-            .all()
-        )
-
-        if not all_user_budgets:
-            flash("No budget data found! Please add a month first.", "error")
-            # ✅ Pass empty lifetime_stats when no data
-            empty_stats = {
-                "total_income": 0.0,
-                "total_expenses": 0.0,
-                "total_savings": 0.0,
-                "expenses_percentage": 0.0,
-                "savings_percentage": 0.0,
-            }
-            return render_template("Allbudgets.html", username=username, budgets_by_year=[], lifetime_stats=empty_stats)
-
-        # ---- Build per-budget records + group by year ----
-        groups = {}
-        uncategorized = []
-
-        for budget in all_user_budgets:
-            expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
-
-            expense_items = []
-            total_expenses = 0.0
-            for exp in expenses:
-                amount = float(exp.expense_amount)
-                expense_items.append({
-                    "id": exp.id,
-                    "category": exp.expense_category,
-                    "expense_category": exp.expense_category,
-                    "amount": amount,
-                    "expense_amount": amount,
-                    "day_name": exp.day_name,
-                    "dayname": exp.day_name,
-                    "month_name": exp.month_name,
-                    "date": exp.date
-                })
-                total_expenses += amount
-
-            savings = float(budget.monthly_income) - total_expenses
-
-            expense_percentages = []
-            if float(budget.monthly_income) > 0:
-                expense_percentages = [
-                    {
-                        "category": item["category"],
-                        "percentage": round((item["amount"] / float(budget.monthly_income)) * 100, 2)
-                    }
-                    for item in expense_items
-                ]
-
-            raw_month = (budget.month_name or "").strip()
-            parts = raw_month.split()
-            month_word = parts[0] if parts else ""
-            year_val = None
-            for token in parts[1:]:
-                if token.isdigit():
-                    year_val = int(token)
-                    break
-
-            record = {
-                "id": budget.id,
-                "month_name": raw_month,
-                "month_word": month_word,
-                "month_num": MONTH_ORDER.get(month_word, 0),
-                "year": year_val,
-                "monthly_income": float(budget.monthly_income),
-                "total_expenses": total_expenses,
-                "savings": savings,
-                "savings_percentage": round((savings / float(budget.monthly_income)) * 100, 2)
-                                     if float(budget.monthly_income) > 0 else 0,
-                "expenses": expense_items,
-                "expense_percentages": expense_percentages
-            }
-
-            if year_val is None:
-                uncategorized.append(record)
-            else:
-                groups.setdefault(year_val, []).append(record)
-
-        # ---- Build the final ordered structure ----
-        budgets_by_year = []
-
-        for year in sorted(groups.keys(), reverse=True):
-            year_budgets = groups[year]
-
-            year_budgets.sort(
-                key=lambda b: (b["month_num"], b["id"]),
-                reverse=True
-            )
-
-            total_income = sum(b["monthly_income"] for b in year_budgets)
-            total_exp = sum(b["total_expenses"] for b in year_budgets)
-            total_sav = total_income - total_exp
-
-            budgets_by_year.append({
-                "label": str(year),
-                "year": year,
-                "is_uncategorized": False,
-                "budgets": year_budgets,
-                "total_income": total_income,
-                "total_expenses": total_exp,
-                "total_savings": total_sav,
-                "expenses_percentage": round((total_exp / total_income) * 100, 2)
-                                      if total_income > 0 else 0,
-                "savings_percentage": round((total_sav / total_income) * 100, 2)
-                                      if total_income > 0 else 0,
-            })
-
-        if uncategorized:
-            uncategorized.sort(key=lambda b: (b["month_num"], b["id"]), reverse=True)
-            total_income = sum(b["monthly_income"] for b in uncategorized)
-            total_exp = sum(b["total_expenses"] for b in uncategorized)
-            total_sav = total_income - total_exp
-            budgets_by_year.append({
-                "label": "Uncategorized",
-                "year": None,
-                "is_uncategorized": True,
-                "budgets": uncategorized,
-                "total_income": total_income,
-                "total_expenses": total_exp,
-                "total_savings": total_sav,
-                "expenses_percentage": round((total_exp / total_income) * 100, 2)
-                                      if total_income > 0 else 0,
-                "savings_percentage": round((total_sav / total_income) * 100, 2)
-                                      if total_income > 0 else 0,
-            })
-
-        # ✅ NEW: Calculate Lifetime Stats across all years
-        lifetime_income = sum(g['total_income'] for g in budgets_by_year)
-        lifetime_expenses = sum(g['total_expenses'] for g in budgets_by_year)
-        lifetime_savings = lifetime_income - lifetime_expenses
-
-        lifetime_stats = {
-            "total_income": lifetime_income,
-            "total_expenses": lifetime_expenses,
-            "total_savings": lifetime_savings,
-            "expenses_percentage": round((lifetime_expenses / lifetime_income) * 100, 2)
-                                   if lifetime_income > 0 else 0,
-            "savings_percentage": round((lifetime_savings / lifetime_income) * 100, 2)
-                                  if lifetime_income > 0 else 0,
-        }
-
-        return make_response(render_template(
-            "Allbudgets.html",
-            username=username,
-            budgets_by_year=budgets_by_year,
-            lifetime_stats=lifetime_stats,  # 👈 PASS LIFETIME STATS
-            now=datetime.now()
-        ))
-
-    except Exception as e:
-        app.logger.exception("all_budgets failed")
-        flash(f"Error retrieving budget data: {str(e)}", "error")
-        return render_template("Allbudgets.html", username=username, budgets_by_year=[], lifetime_stats={
-            "total_income": 0.0, "total_expenses": 0.0, "total_savings": 0.0,
-            "expenses_percentage": 0.0, "savings_percentage": 0.0,
-        })
 
 @app.route('/profile')
 @never_cache
@@ -1296,48 +1724,95 @@ def trigger_weekly_budget_email():
         return jsonify({"status": "error", "message": f"Execution error: {str(err)}"}), 500
 
 @app.route('/signup', methods=['GET', 'POST'])
+@never_cache
 def signup():
     
     if request.method == 'POST':
-        name = request.form['name'].strip()
-        email = request.form['email'].strip()
-        password = request.form['password'].strip()
-        confirm_password = request.form['confirm_password'].strip()
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+
+        # Helper for AJAX errors
+        def signup_error(message):
+            flash(message, "error")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message})
+            return redirect(url_for('signup'))
 
         # Validate inputs
         if password != confirm_password:
-            flash("Passwords don't match!", "error")
-        elif password[0].isdigit():
-            flash("Password must start with a letter!", "error")
+            return signup_error("Passwords don't match!")
+            
+        elif password and password[0].isdigit():
+            return signup_error("Password must start with a letter!")
+            
         elif len(password) < 6:
-            flash("Password too short (min 6 chars)!", "error")
+            return signup_error("Password too short (min 6 chars)!")
+            
         else:
             try:
                 validate_email(email)
                 
                 if User.query.filter_by(email=email).first():
-                    flash("Email already exists!", 'error')
+                    return signup_error("Email already exists!")
                 else:
                     new_user = User(
                         name=name,
                         email=email,
                         password=generate_password_hash(password),
-                        created_at=datetime.utcnow()  # 👈 EXPLICITLY SET THIS
+                        created_at=datetime.utcnow()
                     )
                     db.session.add(new_user)
                     db.session.commit()
+                    
                     flash("Registration successful! Please login.", 'success')
+                    
+                    # 👇 AJAX SUCCESS CHECK 👇
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({'success': True, 'redirect': url_for('login')})
+                        
                     return redirect(url_for('login'))
             
             except EmailNotValidError as e:
-                flash(str(e), "error")
+                return signup_error(str(e))
+                
             except Exception as e:
                 db.session.rollback()
-                flash(f"Database error: {str(e)}", "error")
+                return signup_error(f"Database error: {str(e)}")
         
         return redirect(url_for('signup'))
 
     return render_template('Signup.html')
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+@never_cache
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        user = User.query.filter_by(email=email).first()
+
+        # Helper function
+        def forgot_error(message):
+            flash(message, "error")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message})
+            return redirect(url_for('forgot_password'))
+
+        if user:
+            if send_otp(email):
+                flash("OTP sent successfully!", "success")
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': True, 'redirect': url_for('verify_otp')})
+                return redirect(url_for('verify_otp'))
+            else:
+                return forgot_error("Failed to send OTP. Try again later.")
+        else:
+            return forgot_error("No account found with this email!")
+                
+    return render_template('Forgotpass.html')
+
+from flask import request, jsonify
 
 @app.route('/login', methods=['GET', 'POST'])
 @never_cache
@@ -1353,41 +1828,36 @@ def login():
             user = User.query.filter_by(email=email).first()
 
             if user and check_password_hash(user.password, password):
+                session.clear()
                 session['user_id'] = user.user_id
                 session['username'] = user.name
-                session.permanent = True  # Enable session expiration
+                session.permanent = True
 
-                expiry_time = datetime.now() + timedelta(minutes=30)  # Set session expiry time
-                session['session_expiry'] = expiry_time.timestamp()  # Store expiry time as timestamp
+                expiry_time = datetime.now() + timedelta(minutes=60)
+                session['session_expiry'] = expiry_time.timestamp()
+                
+                # 👇 AJAX SUCCESS: Return JSON
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': True, 'redirect': url_for('dashboard')})
                 
                 flash("Login successful!", 'success')
                 return redirect(url_for("dashboard"))
             
-            flash("Invalid credentials!", 'error')
+            # 👇 ADD FLASH MESSAGE BEFORE THE AJAX RESPONSE 👇
+            flash("Invalid email or password", 'error') 
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False}), 200
+            
         except Exception as e:
             flash(f"Database error: {str(e)}", "error")
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False}), 200
         
         return redirect(url_for("login"))
 
     return render_template('Login.html')
-
-# Forgot password
-@app.route('/forgot_password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        email = request.form.get('email').strip()  # Ensure no extra spaces
-        user = User.query.filter_by(email=email).first()
-
-        if user:
-            if send_otp(email):
-                flash("OTP sent successfully!", "success")
-                return redirect(url_for('verify_otp'))
-            else:
-                flash("Failed to send OTP. Try again later.", "error")
-        else:
-            flash("No account found with this email!", "error")
-    #session.pop('email', None)
-    return render_template('Forgotpass.html')
 
 @app.route('/resend_otp')
 def resend_otp():
@@ -1406,7 +1876,11 @@ def resend_otp():
     flash("New OTP sent successfully!", "success")
     return redirect(url_for('verify_otp'))
     
-# Send OTP via Email
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.header import Header
+
 def send_otp(email):
     print("Sender:", os.getenv("SENDER_EMAIL"))
     otp = random.randint(100000, 999999)
@@ -1417,71 +1891,98 @@ def send_otp(email):
         print("Error: Email credentials not set")
         return False
     
-    subject = "Password Reset OTP"
-    body = f"Your OTP for password reset is: {otp}"
-    message = f"Subject: {subject}\n\n{body}"
+    # --- Professional Subject ---
+    subject = "Budget Wisely | Password Reset Verification Code"
+    
+    # --- Professional Body (HTML) ---
+    html_body = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #4f46e5;">Password Reset Request</h2>
+        <p>Hi,</p>
+        <p>We received a request to reset your password for your <strong>Budget Wisely</strong> account.</p>
+        <p>Your One-Time Password (OTP) is:</p>
+        <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px; text-align: center; background: #f1f5f9; padding: 15px; border-radius: 8px; color: #0f172a;">
+          {otp}
+        </p>
+        <p><strong>This OTP is valid for 10 minutes.</strong></p>
+        <p>If you did not request this, please ignore this email. Your account is safe.</p>
+        <br>
+        <p style="font-size: 0.85em; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+          © 2026 Budget Wisely. All rights reserved.
+        </p>
+      </body>
+    </html>
+    """
+    
+    # --- Build the Message ---
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = Header(subject, 'utf-8')
+    msg['From'] = f"Budget Wisely <{sender_email}>"
+    msg['To'] = email
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, email, message)
-        print(email)
-        print(otp)
-        session['email'] = email
-        session['sent_otp'] = otp
-        session['otp_expiry'] = (datetime.now() + timedelta(minutes=5)).timestamp()
-        return True
-    return False
+    # Attach both plain text and HTML versions
+    plain_text = f"Your OTP for password reset is: {otp}. It is valid for 10 minutes. If you did not request this, please ignore this email."
+    msg.attach(MIMEText(plain_text, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, email, msg.as_string())
+            print(email)
+            print(otp)
+            session['email'] = email
+            session['sent_otp'] = otp
+            session['otp_expiry'] = (datetime.now() + timedelta(minutes=10)).timestamp()
+            return True
+    except Exception as e:
+        print(f"Error sending OTP email: {e}")
+        return False
 
 # Verify OTP Route
 @app.route('/verify_otp', methods=['GET', 'POST'])
 @never_cache
 def verify_otp():
-    # Prevent direct access if OTP was not sent
-    email = session.get('email')  # Retrieve email from session
-    sent_otp = session.get('sent_otp')  # Retrieve stored OTP
-    otp_expiry = session.get('otp_expiry')  # Retrieve OTP expiry time
+    email = session.get('email')
+    sent_otp = session.get('sent_otp')
+    otp_expiry = session.get('otp_expiry')
 
-    if not email:
+    # Helper function for AJAX/Standard responses
+    def otp_error(message, redirect_endpoint='forgot_password'):
         session.clear()
-        flash("Session expired! Please request for new otp.", "error")
-        return redirect(url_for('forgot_password'))
+        flash(message, "error")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': message})
+        return redirect(url_for(redirect_endpoint))
 
-    if not sent_otp:
-        session.clear()
-        flash("OTP expired! Please request for new otp.", "error")
-        return redirect(url_for('forgot_password'))
-
-    if not otp_expiry:
-        session.clear()
-        flash("OTP expiry not found! Please request for new otp.", "error")
-        return redirect(url_for('forgot_password'))
+    if not email: return otp_error("Session expired! Please request for new otp.")
+    if not sent_otp: return otp_error("OTP expired! Please request for new otp.")
+    if not otp_expiry: return otp_error("OTP expiry not found! Please request for new otp.")
         
-    # Check if OTP has expired
     if datetime.now().timestamp() > otp_expiry:
-        session.pop('sent_otp', None)  # Remove expired OTP
-        session.pop('otp_expiry', None)
-        session.pop('email', None)
-        session.clear()
-        flash("OTP has expired! Please request a new one.", "error")
-        return redirect(url_for('forgot_password'))
+        return otp_error("OTP has expired! Please request a new one.")
 
     if request.method == 'POST':
-        entered_otp = request.form.get('otp', '').strip()  # Ensure OTP is stripped of spaces
+        entered_otp = request.form.get('otp', '').strip()
 
-        # Validate OTP
         if str(sent_otp) == entered_otp:
-            # OTP is valid; clean up session
             session.pop('sent_otp', None)
             session.pop('otp_expiry', None)
             session.pop('email', None)
-
-            session['verified_email'] = email  # Store verified email
+            session['verified_email'] = email
 
             flash("OTP verified successfully! Please reset your password.", "success")
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': True, 'redirect': url_for('reset_password')})
             return redirect(url_for('reset_password'))
         else:
             flash("Invalid OTP! Please try again.", "error")
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': "Invalid OTP! Please try again."})
             return redirect(url_for('verify_otp'))
 
     return render_template('VerifyOTP.html')
@@ -1490,48 +1991,55 @@ def verify_otp():
 @app.route('/reset_password', methods=['GET', 'POST'])
 @never_cache
 def reset_password():
-    email = session.get('verified_email')  # Retrieve email using the correct key
-    # Prevent unauthorized access
+    email = session.get('verified_email')
+    
     if not email:
         session.clear()
         flash('OTP expired! Please verify with OTP first.', 'error')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'OTP expired! Please verify with OTP first.'})
         return redirect(url_for('forgot_password'))
 
     if request.method == 'POST':
         password = request.form.get('password', '').strip()
         cpassword = request.form.get('cpassword', '').strip()
 
-        # Validate passwords
+        def pass_error(message):
+            flash(message, 'error')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message})
+            return render_template('Resetpass.html')
+
         if not password or not cpassword:
-            flash('Password fields cannot be empty!', 'error')
+            return pass_error('Password fields cannot be empty!')
         elif password[0].isdigit():
-            flash("Password must start with a letter!", "error")
+            return pass_error("Password must start with a letter!")
         elif len(password) < 6:
-            flash("Password too short (min 6 chars)!", "error")
+            return pass_error("Password too short (min 6 chars)!")
         elif password != cpassword:
-            flash('Passwords do not match! Please try again.', 'error')
+            return pass_error('Passwords do not match! Please try again.')
         else:
             try:
-                # Update user password
                 user = User.query.filter_by(email=email).first()
                 if user:
-                    user.password = generate_password_hash(password)  # Hash password
+                    user.password = generate_password_hash(password)
                     db.session.commit()
 
-                    # Clean up session after successful reset
-                    session.pop('verified_email', None)  # Use 'email' consistently
+                    session.pop('verified_email', None)
                     session.clear()
+                    
                     flash("Password reset successful! Please log in.", "success")
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({'success': True, 'redirect': url_for('login')})
                     return redirect(url_for('login'))
                 else:
                     session.clear()
-                    flash("User not found! Please try again.", "error")
-                return render_template('Resetpass.html') # added return to prevent the code from continuing.
+                    return pass_error("User not found! Please try again.")
             except Exception as e:
                 db.session.rollback()
                 session.clear()
-                flash("We are unable to process your request right now. Please try again later.", "error")
-                return redirect(url_for('forgot_password'))  # redirect user back to the password reset page.
+                return pass_error("We are unable to process your request right now. Please try again later.")
+                
     return render_template('Resetpass.html')
 
 @app.route('/change_password', methods=['GET', 'POST'])
@@ -1645,5 +2153,8 @@ def check_db_connection():
 def shutdown_session(exception=None):
     db.session.remove()
 
+# Reads "True"/"False" from environment, defaults to False
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
+
 if __name__ == '__main__':
-    app.run(debug=False, use_reloader=True)
+    app.run(debug=DEBUG, use_reloader=True)

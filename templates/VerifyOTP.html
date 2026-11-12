@@ -16,7 +16,7 @@
     
     .auth-container button { width: 100%; padding: 0.85rem; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 0.5rem; font-size: 1rem; display: flex; justify-content: center; align-items: center; gap: 8px; }
     .auth-container button:hover { background: #4338ca; }
-    
+
     /* Spam Warning Box */
     .spam-warning {
         display: flex;
@@ -69,7 +69,7 @@
         </div>
     </div>
 
-    <form method="POST">
+    <form id="otp-form" method="POST">
         <input type="hidden" name="email" value="{{ email }}">
         
         <div class="input-icon-group">
@@ -77,12 +77,54 @@
             <input type="text" name="otp" placeholder="000000" required maxlength="6" autocomplete="off">
         </div>
         
-        <button type="submit"><i class="fa-solid fa-check-circle"></i> Verify OTP</button>
-    </form>
+    <!-- Add id="otp-btn" -->
+    <button type="submit" id="otp-btn"><i class="fa-solid fa-check-circle"></i> Verify OTP</button>    </form>
     
     <div class="auth-links">
         <a href="{{ url_for('resend_otp') }}" style="margin-top: 1rem;">Didn't receive it? Resend OTP</a>
         <a href="{{ url_for('default') }}" style="color: #64748b; margin-top: 0.5rem;"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('otp-form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    
+    const btn = document.getElementById('otp-btn');
+    const originalBtnHtml = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+    btn.disabled = true;
+
+    if(typeof showLoadingSpinner === 'function') showLoadingSpinner('Verifying OTP...');
+
+    const formData = new FormData(this);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+
+        if (data.success) {
+            window.location.href = data.redirect;
+        } else {
+            // Failure: Reload the page so Flask renders the flash message natively
+            window.location.reload(); 
+        }
+    })
+    .catch(error => {
+        console.error("Fetch error:", error);
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+        alert("Network error. Please try again.");
+        btn.innerHTML = originalBtnHtml;
+        btn.disabled = false;
+    });
+});
+</script>
 {% endblock %}

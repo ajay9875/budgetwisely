@@ -9,6 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- 👇 ADD THIS LINE 👇 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- CSS Links -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Default.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
@@ -26,7 +29,7 @@
         <div class="nav-container">
             <a href="{{ url_for('default') }}" class="brand-logo" style="color: #ffffff;">
                 <img src="{{ url_for('static', filename='icon/favicon.png') }}" alt="BudgetWisely Logo">
-                <span>Budget<strong> Wisely</strong></span>
+                <span>Budget Wisely</span>
             </a>
             
             <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation" style="color: #ffffff;">
@@ -43,34 +46,36 @@
                 </nav>
 
                 <div class="nav-auth">
-                    {% if not session.get('user_id') %}
+                    {% if is_logged_in %}
+                        <a href="{{ url_for('dashboard') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i> Continue to App
+                        </a>
+                    {% else %}
                         <a href="{{ url_for('login') }}" class="nav-btn nav-btn-outline" style="color: #ffffff; border-color: #475569;">Log In</a>
                         <a href="{{ url_for('signup') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Sign Up Free</a>
-                    {% else %}
-                        <a href="{{ url_for('dashboard') }}" class="nav-btn nav-btn-primary" style="background-color: #4f46e5;">Dashboard</a>
                     {% endif %}
                 </div>
             </div>
         </div>
     </header>
     
-    <!-- Flash Messages -->
-    <div class="message-wrapper" style="position: absolute; top: 80px; right: 20px; z-index: 1000; max-width: 350px;">   
-        {% with messages = get_flashed_messages(with_categories=True) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="flash-message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-    </div>  
+    <div class="message">    
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    </div>
 
     <!-- Dynamic Content Block -->
-    <!-- Note: display: block ensures the landing page charts are visible -->
-    <main style="min-height: calc(100vh - 350px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; width: 100%;">
-        {% block content %}{% endblock %}
+    <main style="min-height: calc(100vh - 350px); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; width: 100%;">
+        <div style="width: 100%; max-width: 1200px; display: flex; flex-direction: column; align-items: center;"> 
+            {% block content %}{% endblock %}
+        </div>
     </main>
 
     <!-- Footer -->
@@ -131,5 +136,7 @@
             });
         });
     </script>
+    <!-- Page-specific Scripts -->
+    {% block scripts %}{% endblock %}
 </body>
 </html>

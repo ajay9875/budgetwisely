@@ -22,10 +22,19 @@
 </head>
 <body>
 
-    <!-- Global Loading Spinner -->
-    <div id="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <div id="loading-text">Processing your request...</div>
+    <!-- Global Loading Spinner (Ripple Pulse Ring Spinner) -->
+    <!-- Global Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="sp-12">
+            <div class="sp-12__ripple">
+                <div class="sp-12__ring"></div>
+                <div class="sp-12__ring"></div>
+                <div class="sp-12__ring"></div>
+                <div class="sp-12__ring"></div>
+                <div class="sp-12__dot"></div>
+            </div>
+        </div>
+        <div id="loading-text" class="sp-text">Processing...</div>
     </div>
 
     <!-- Global Header -->
@@ -64,7 +73,7 @@
         </div>
     </header>
 
-    <!-- Global Flash Messages -->
+    <!-- Global Messages -->
     <div class="message">    
     {% with messages = get_flashed_messages(with_categories=True) %}
         {% if messages %}
@@ -134,19 +143,64 @@
             }
         }
 
-        // Loading Spinner
+        // 🟢 Pulse Loading Spinner Logic
+        const LOADING_TEXTS = [
+            "Processing...", "Securing your request...", "Just a moment...",
+            "Preparing your workspace...", "Syncing data safely...", "Connecting to servers...",
+            "Optimizing your experience...", "Verifying details...", "Almost there...",
+            "Wrapping things up...", "Finalizing the process...", "Handling securely...",
+            "Retrieving information...", "Setting things up...", "Executing request...",
+            "Communicating with server...", "Loading your data...", "Please bear with us...",
+            "Working in the background...", "Completing tasks..."
+        ];
+
         let serverTimeoutId;
-        function showLoadingSpinner(message) {
+
+        function showLoadingSpinner(message = null) {
             const overlay = document.getElementById('loading-overlay');
-            if (message) document.getElementById('loading-text').innerText = message;
+            const textElement = document.getElementById('loading-text');
+            
+            if (message) {
+                textElement.innerText = message;
+            } else {
+                const randomIndex = Math.floor(Math.random() * LOADING_TEXTS.length);
+                textElement.innerText = LOADING_TEXTS[randomIndex];
+            }
+
             overlay.style.display = 'flex';
+            requestAnimationFrame(() => {
+                overlay.classList.add('show');
+            });
+
+            clearTimeout(serverTimeoutId);
             serverTimeoutId = setTimeout(() => {
-                overlay.style.display = 'none';
+                hideLoadingSpinner();
                 alert('Server request timed out. Please try again.');
             }, 15000);
         }
+
+        function hideLoadingSpinner() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.remove('show');
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 200);
+        }
+
         function handleFormSubmit(e) {
-            showLoadingSpinner('Updating records...');
+            // Prevent the page from reloading instantly
+            if (e) e.preventDefault(); 
+            
+            // Show the spinner
+            showLoadingSpinner('Processing...');
+
+            // Wait 50ms, then submit the actual form
+            const form = e.target;
+            setTimeout(() => {
+                // We remove the onsubmit attribute so it doesn't loop infinitely
+                form.removeAttribute('onsubmit');
+                form.submit();
+            }, 50);
         }
 
         // 🕒 Global Session Timer
@@ -180,5 +234,29 @@
     
     <!-- Page-specific Scripts -->
     {% block scripts %}{% endblock %}
+    <script>
+    function downloadPDF(event, url, button) {
+        event.preventDefault(); // Stop immediate navigation
+        
+        // Change button state
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Downloading...';
+        button.style.opacity = '0.7';
+        button.style.cursor = 'not-allowed';
+        
+        // Prevent multiple clicks
+        button.onclick = function(e) { e.preventDefault(); };
+
+        // Trigger the download
+        window.location.href = url;
+
+        // Restore after 5 seconds
+        setTimeout(() => {
+            button.innerHTML = originalHtml;
+            button.style.opacity = '1';
+            button.style.cursor = 'pointer';
+        }, 5000);
+    }
+</script>
 </body>
 </html>

@@ -22,7 +22,7 @@
 <div class="auth-container">
     <h2><i class="fa-solid fa-unlock-keyhole" style="color: #10b981; margin-right: 8px;"></i> Create New Password</h2>
     
-    <form method="POST">
+    <form id="reset-form" method="POST">
         <div class="input-icon-group">
             <i class="fa-solid fa-lock"></i>
             <input type="password" name="password" placeholder="Create new password" autocomplete="off" required>
@@ -33,11 +33,53 @@
             <input type="password" name="cpassword" placeholder="Re-type new password" autocomplete="off" required>
         </div>
         
-        <button type="submit"><i class="fa-solid fa-check-double"></i> Reset Password</button>
-    </form>
+    <!-- Add id="reset-btn" -->
+    <button type="submit" id="reset-btn"><i class="fa-solid fa-check-double"></i> Reset Password</button>    </form>
     
     <div class="auth-links">
         <a href="{{ url_for('login') }}"><i class="fa-solid fa-arrow-left"></i> Back to Login</a>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('reset-form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    
+    const btn = document.getElementById('reset-btn');
+    const originalBtnHtml = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+    btn.disabled = true;
+
+    if(typeof showLoadingSpinner === 'function') showLoadingSpinner('Resetting Password...');
+
+    const formData = new FormData(this);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+
+        if (data.success) {
+            window.location.href = data.redirect;
+        } else {
+            // Failure: Reload the page so Flask renders the flash message natively
+            window.location.reload(); 
+        }
+    })
+    .catch(error => {
+        console.error("Fetch error:", error);
+        if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+        alert("Network error. Please try again.");
+        btn.innerHTML = originalBtnHtml;
+        btn.disabled = false;
+    });
+});
+</script>
 {% endblock %}

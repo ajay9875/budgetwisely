@@ -4,6 +4,8 @@
 
 {% block auth_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/Auth.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Allmessage.css') }}">
+
 <style>
     .auth-container { width: 100%; max-width: 400px; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
     .auth-container h2 { text-align: center; margin-top: 0; color: #0f172a; margin-bottom: 1.5rem; }
@@ -26,11 +28,10 @@
 {% endblock %}
 
 {% block content %}
+<!-- Error Message Container -->
+<div id="login-error"></div>
 <div class="auth-container">
     <h2><i class="fa-solid fa-user-lock" style="color: #4f46e5; margin-right: 8px;"></i> User Login</h2>
-    
-    <!-- Error Message Container -->
-    <div id="login-error"></div>
 
     <form id="login-form" method="POST" action="{{ url_for('login') }}" autocomplete="off" onsubmit="submitLogin(event)">
         <div class="input-icon-group">
@@ -69,52 +70,43 @@
 
         const form = document.getElementById('login-form');
         const btn = document.getElementById('login-btn');
-        const errorBox = document.getElementById('login-error');
         const originalBtnHtml = btn.innerHTML;
 
-        // Reset UI
-        errorBox.style.display = 'none';
+        // Show loading state
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Authenticating...';
         btn.disabled = true;
+
+        // Show overlay if function exists
+        if(typeof showLoadingSpinner === 'function') showLoadingSpinner('Authenticating...');
 
         const formData = new FormData(form);
 
         fetch("{{ url_for('login') }}", {
             method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            // If the backend redirects (successful login), the response.url will be the dashboard
-            if (response.redirected) {
-                window.location.href = response.url;
-                return;
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
             }
-            // If not redirected, it means the login failed, so read the HTML
-            return response.text();
         })
-        .then(html => {
-            if (!html) return; // Handled by the redirect above
+        .then(response => response.json())
+        .then(data => {
+            // Hide the overlay
+            if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
 
-            // Parse the returned HTML to find the flash message
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const flashMessage = doc.querySelector('.flash-message.error');
-
-            if (flashMessage) {
-                errorBox.innerText = flashMessage.innerText;
-                errorBox.style.display = 'block';
+            if (data.success) {
+                // Success: Redirect to dashboard
+                window.location.href = data.redirect;
             } else {
-                errorBox.innerText = "Login failed. Please check your credentials.";
-                errorBox.style.display = 'block';
+                // Failure: Reload the login page.
+                // Flask will automatically display the flash message from its session.
+                window.location.reload(); 
             }
-
-            // Restore button
-            btn.innerHTML = originalBtnHtml;
-            btn.disabled = false;
         })
         .catch(error => {
-            errorBox.innerText = "Network error. Please try again.";
-            errorBox.style.display = 'block';
+            if(typeof hideLoadingSpinner === 'function') hideLoadingSpinner();
+            
+            console.error("Fetch error:", error);
+            alert("Network error. Please try again.");
             btn.innerHTML = originalBtnHtml;
             btn.disabled = false;
         });

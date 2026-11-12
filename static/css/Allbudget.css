@@ -38,11 +38,12 @@ body {
 
 /* The page content wrapper must grow so the footer is pushed down */
 .container {
-    max-width: 1100px;
+    max-width: 1000px !important;
     width: 100%;
     margin: 0 auto;
     padding: 24px 16px;
-    flex: 1;                              /* ← key line */
+    flex: 1; 
+    margin: 0 auto;
 }
 
 footer {
@@ -98,13 +99,6 @@ footer {
     align-items: center;
     justify-content: center;
     gap: 10px;
-}
-
-/* Layout Container */
-.container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px 16px;
 }
 
 /* =========================================
@@ -167,7 +161,7 @@ footer {
 
 /* Mobile Responsive */
 
-@media (max-width: 600px) {
+@media (max-width: 991px) {
 
     .year-header {
         margin: 1.8rem 0 1.3rem;
@@ -312,11 +306,9 @@ footer {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: 20px;
-    margin-bottom: 30px;
     box-shadow: var(--shadow);
-    position: relative;
-    height: 350px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Monthly Container */
@@ -331,11 +323,13 @@ footer {
 
 .budget-box-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: space-between; /* Pushes content to edges */
+    align-items: center;            /* Vertically centers them */
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 12px;
     margin-bottom: 16px;
+    flex-wrap: nowrap;              /* 👈 Prevents them from stacking */
+    gap: 10px;                      /* 👈 Adds space between title and button */
 }
 
 .budget-box-header h3 {
@@ -345,6 +339,7 @@ footer {
     display: flex;
     align-items: center;
     gap: 8px;
+    white-space: nowrap;            /* 👈 FORCES the text "November 2026" to stay on one line */
 }
 
 .btn-delete-month {
@@ -354,12 +349,12 @@ footer {
     background-color: var(--negative-bg);
     padding: 8px 14px;
     font-size: 0.85rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    font-weight: 600;               
+    align-items: center;            
+    margin-left: auto !important;        
     cursor: pointer;
     transition: all 0.2s ease;
+    flex-shrink: 0;                 /* 👈 Prevents the button from squishing */
 }
 
 .btn-delete-month:hover {
@@ -631,7 +626,7 @@ footer {
     margin-bottom: 12px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 991px) {
     .nav-title h2 { font-size: 1rem; }
     .nav-title { margin-right: 0; }
     .summary-cards { grid-template-columns: 1fr; }
