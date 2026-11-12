@@ -143,15 +143,21 @@ import os
 import pdfkit
 
 # 👇 Safely configure pdfkit (prevents app crash if not installed)
+
 try:
     if os.name == 'nt':
-        # Windows: Try default 64-bit path, fallback to 32-bit
         path_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
         if not os.path.exists(path_wkhtmltopdf):
             path_wkhtmltopdf = r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
         config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
     else:
-        config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+        # 👇 THIS points to the file you just downloaded 👇
+        path_wkhtmltopdf = os.path.expanduser('~/wkhtmltopdf/usr/local/bin/wkhtmltopdf')
+        
+        if os.path.exists(path_wkhtmltopdf):
+            config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+        else:
+            config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf') # Fallback
 except Exception as e:
     print(f"⚠️ Warning: wkhtmltopdf not found. PDF export will not work. Error: {e}")
     config = None
@@ -166,7 +172,6 @@ pdf_options = {
     'encoding': "UTF-8",
     'enable-local-file-access': None, # Crucial for CSS/Fonts to load
     'print-media-type': None,
-    'quiet': '' # 👈 Add this to stop the OSError: write error logs
 }
 
 # =======================================
