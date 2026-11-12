@@ -172,6 +172,12 @@ pdf_options = {
 def download_dashboard_pdf():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
+        # 👇 ADD THIS SAFETY CHECK 👇
+    if not config or not config.wkhtmltopdf:
+        flash("PDF generation is not configured on this server. Please contact support.", "error")
+        return redirect(url_for('dashboard'))
+    # 👆 END OF SAFETY CHECK 👆
     
     user_id = int(session['user_id'])
     username = session.get('username', 'user')
