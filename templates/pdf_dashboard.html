@@ -134,6 +134,7 @@
     <table class="data-table">
         <thead>
             <tr>
+                <th>#</th> <!-- 👈 ADD THIS -->
                 <th>Category</th>
                 <th class="text-right">Total Amount</th>
             </tr>
@@ -141,6 +142,7 @@
         <tbody>
             {% for category, total in budget_result.category_totals.items() %}
             <tr>
+                <td>{{ loop.index }}</td> <!-- 👈 ADD THIS -->
                 <td>{{ category }}</td>
                 <td class="text-right">₹{{ "%.2f"|format(total) }}</td>
             </tr>
