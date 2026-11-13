@@ -97,8 +97,7 @@
         </tr>
     </table>
 
-    <!-- 1. CHARTS -->
-    <!-- Bar Chart (Full Width) -->
+    <!-- 1. BAR CHART (Full Width) -->
     {% if bar_base64 %}
     <div class="chart-box">
         <h3 class="chart-title">Budget Breakdown</h3>
@@ -106,10 +105,11 @@
     </div>
     {% endif %}
 
-        <!-- 3. DOUGHNUT CHARTS (Side by Side) -->
+    <!-- 3. DOUGHNUT CHARTS (Side by Side) -->
     <table class="chart-grid">
         <tr>
             <td>
+                <!-- 2. INCOME ALLOCATION (Full Width) -->
                 {% if alloc_base64 %}
                 <div class="chart-box">
                     <h3 class="chart-title">Income Allocation</h3>
@@ -118,6 +118,7 @@
                 {% endif %}
             </td>
             <td>
+            <!-- 3. EXPENSE CATEGORIES (Full Width) -->
                 {% if pie_base64 %} 
                 <div class="chart-box">
                     <h3 class="chart-title">Expense Categories</h3>

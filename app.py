@@ -201,10 +201,10 @@ def make_bar_chart(income, expenses, savings):
     return fig_to_base64(fig)
 
 def make_doughnut(labels, values, colors, center_text=None):
-    # We keep the figure square, but make it a bit bigger to fit the bottom legend
-    fig, ax = plt.subplots(figsize=(5, 4.5)) 
+    # Make the figure wider to accommodate long legends
+    fig, ax = plt.subplots(figsize=(7, 4.5)) 
     
-    # Truncate labels to 15 characters + "..."
+    # Truncate labels
     truncated_labels = [f"{label[:15]}..." if len(label) > 15 else label for label in labels]
     
     wedges, texts, autotexts = ax.pie(
@@ -229,19 +229,21 @@ def make_doughnut(labels, values, colors, center_text=None):
                 
     ax.axis("equal")
     
-    # 👇 POSITION LEGEND AT THE BOTTOM 👇
-    # bbox_to_anchor=(0.5, 0.0) pushes the legend to the bottom edge
+    # 👇 FIX: Use 3 columns and move legend lower to prevent overlap
     ax.legend(
         wedges, truncated_labels, 
         loc="upper center", 
-        bbox_to_anchor=(0.5, 0.05), 
-        ncol=2, # 2 columns looks cleaner for long names
+        bbox_to_anchor=(0.5, -0.05), # Move slightly lower
+        ncol=3, # 3 columns for better spacing
         frameon=False,
         fontsize=8,
-        handlelength=1,  # Makes the color strip smaller
-        handletextpad=0.5, # Brings text closer to the strip
-        columnspacing=1.5
+        handlelength=1,
+        handletextpad=0.5,
+        columnspacing=1.0
     )
+    
+    # Use tight_layout to ensure legend isn't cut off
+    fig.tight_layout()
     
     return fig_to_base64(fig)
 
