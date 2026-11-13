@@ -2172,4 +2172,4 @@ def shutdown_session(exception=None):
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 if __name__ == '__main__':
-    app.run(debug=False, use_reloader=True)
+    app.run(debug=False)
