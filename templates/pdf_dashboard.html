@@ -94,10 +94,10 @@
 
     <!-- 1. CHARTS -->
     <!-- Bar Chart (Full Width) -->
-    {% if bar_url %}
+    {% if bar_base64 %}
     <div class="chart-box">
         <h3 class="chart-title">Budget Breakdown</h3>
-        <img src="{{ bar_url }}" alt="Budget Breakdown">
+        <img src="data:image/png;base64,{{ bar_base64 }}" alt="Budget Breakdown">    
     </div>
     {% endif %}
 
@@ -105,18 +105,18 @@
     <table class="chart-grid">
         <tr>
             <td>
-                {% if alloc_url %}
+                {% if alloc_base64 %}
                 <div class="chart-box">
                     <h3 class="chart-title">Income Allocation</h3>
-                    <img src="{{ alloc_url }}" alt="Income Allocation">
+                    <img src="data:image/png;base64,{{ alloc_base64 }}" alt="Income Allocation">
                 </div>
                 {% endif %}
             </td>
             <td>
-                {% if pie_url %}
+                {% if pie_base64 %} 
                 <div class="chart-box">
                     <h3 class="chart-title">Expense Categories</h3>
-                    <img src="{{ pie_url }}" alt="Expense Categories">
+                    <img src="data:image/png;base64,{{ pie_base64 }}" alt="Expense Categories">
                 </div>
                 {% endif %}
             </td>

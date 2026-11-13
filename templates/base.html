@@ -230,11 +230,7 @@
                 window.addEventListener('beforeunload', () => clearInterval(timerId));
             }
         });
-    </script>
-    
-    <!-- Page-specific Scripts -->
-    {% block scripts %}{% endblock %}
-    <script>
+
     function downloadPDF(event, url, button) {
         event.preventDefault(); // Stop immediate navigation
         
@@ -258,5 +254,8 @@
         }, 5000);
     }
 </script>
+    
+    <!-- Page-specific Scripts -->
+    {% block scripts %}{% endblock %}
 </body>
 </html>

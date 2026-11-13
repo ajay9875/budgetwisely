@@ -46,6 +46,20 @@ body {
     margin: 0 auto;
 }
 
+.chart-container.yearly-trend-chart {
+    margin-bottom: 30px; 
+    width: 100% !important;
+    max-width: 100%;
+    position: relative;
+    height: 350px;
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    display: block !important; /* 👈 Overrides the flex layout from .chart-container */
+}
+
 footer {
     text-align: center;
     padding: 1.5rem;

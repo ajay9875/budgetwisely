@@ -5,6 +5,11 @@ from calendar import month_name
 from datetime import datetime, timedelta
 from functools import wraps
 from flask_migrate import Migrate  # 👈 Add this at the top
+import io
+import base64
+import matplotlib
+matplotlib.use('Agg') # Required for server-side rendering
+import matplotlib.pyplot as plt
 
 from dotenv import load_dotenv
 from email_validator import EmailNotValidError, validate_email
@@ -141,38 +146,169 @@ def favicon():
 
 import os
 import pdfkit
+import shutil
 
-# 👇 Safely configure pdfkit (prevents app crash if not installed)
-
+# 👇 Robust wkhtmltopdf configuration
+config = None
 try:
-    if os.name == 'nt':
-        path_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
-        if not os.path.exists(path_wkhtmltopdf):
-            path_wkhtmltopdf = r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
-        config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-    else:
-        # 👇 THIS points to the file you just downloaded 👇
-        path_wkhtmltopdf = os.path.expanduser('~/wkhtmltopdf/usr/local/bin/wkhtmltopdf')
+    if os.name == 'nt': # Windows
+        paths = [
+            r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe',
+            r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
+        ]
+        for p in paths:
+            if os.path.exists(p):
+                config = pdfkit.configuration(wkhtmltopdf=p)
+                break
+    else: # Linux / Mac
+        # 1. Check custom path
+        custom_path = os.path.expanduser('~/wkhtmltopdf/usr/local/bin/wkhtmltopdf')
+        # 2. Check system path
+        system_path = shutil.which('wkhtmltopdf') or '/usr/bin/wkhtmltopdf'
         
-        if os.path.exists(path_wkhtmltopdf):
-            config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-        else:
-            config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf') # Fallback
+        if os.path.exists(custom_path) and os.access(custom_path, os.X_OK):
+            config = pdfkit.configuration(wkhtmltopdf=custom_path)
+        elif os.path.exists(system_path) and os.access(system_path, os.X_OK):
+            config = pdfkit.configuration(wkhtmltopdf=system_path)
+            
+    if not config:
+        print("⚠️ Warning: wkhtmltopdf executable not found. PDF export will fail.")
 except Exception as e:
-    print(f"⚠️ Warning: wkhtmltopdf not found. PDF export will not work. Error: {e}")
+    print(f"⚠️ Warning: wkhtmltopdf config error: {e}")
     config = None
 
-# PDF Options (Single, clean definition)
+# PDF Options (Fixed: no-outline removed, added enable-local-file-access)
 pdf_options = {
     'page-size': 'A4',
-    'margin-top': '15mm',
-    'margin-right': '15mm',
-    'margin-bottom': '15mm',
-    'margin-left': '15mm',
-    'encoding': "UTF-8",
-    'enable-local-file-access': None, # Crucial for CSS/Fonts to load
-    'print-media-type': None,
+    'margin-top': '10mm',
+    'margin-bottom': '12mm',
+    'margin-left': '10mm',
+    'margin-right': '10mm',
+    'encoding': 'UTF-8',
+    'enable-local-file-access': '',
+    'disable-smart-shrinking': '',
+    'print-media-type': '',
+    'footer-center': 'Page [page] of [topage]',
+    'footer-font-size': '8',
+    # 'footer-color': '#94a3b8',   <-- REMOVED (not supported in 0.12.6)
 }
+    
+# =======================================
+# Download ALL budgets PDF (Matplotlib charts)
+# =======================================
+import io
+import base64
+import matplotlib
+matplotlib.use('Agg')                # headless backend (safe for Flask)
+import matplotlib.pyplot as plt
+
+# Global style polish for all charts
+plt.rcParams.update({
+    "font.family": "DejaVu Sans",
+    "font.size": 10,
+    "axes.edgecolor": "#cbd5e1",
+    "axes.labelcolor": "#475569",
+    "xtick.color": "#475569",
+    "ytick.color": "#475569",
+    "text.color": "#334155",
+})
+
+CATEGORY_PALETTE = [
+    "#6366f1", "#f43f5e", "#f59e0b", "#10b981",
+    "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16",
+]
+
+def fig_to_base64(fig, dpi=160):
+    """Render a matplotlib figure to a base64 PNG (solid white bg)."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight",
+                transparent=False, facecolor="white", dpi=dpi)
+    buf.seek(0)
+    plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
+def make_bar_chart(income, expenses, savings):
+    """Income / Expenses / Savings bar chart."""
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    labels = ["Income", "Expenses", "Savings"]
+    values = [income, expenses, savings]
+    colors = ["#4F46E5", "#EF4444", "#10B981"]
+
+    bars = ax.bar(labels, values, color=colors, width=0.55, zorder=3)
+
+    # Value labels on top of each bar
+    for bar, val in zip(bars, values):
+        ax.annotate(
+            f"₹{val:,.0f}",
+            xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
+            xytext=(0, 4), textcoords="offset points",
+            ha="center", va="bottom", fontsize=9, fontweight="bold",
+            color="#1e293b",
+        )
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color("#e2e8f0")
+    ax.spines["bottom"].set_color("#e2e8f0")
+    ax.tick_params(left=False, labelleft=False)
+    ax.set_axisbelow(True)
+    ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
+    ax.set_ylim(0, max(values + [1]) * 1.18)
+
+    return fig_to_base64(fig)
+
+
+def make_doughnut(labels, values, colors, center_text=None):
+    """Generic doughnut chart."""
+    fig, ax = plt.subplots(figsize=(4, 4))
+    wedges, texts, autotexts = ax.pie(
+        values,
+        labels=labels,
+        colors=colors[: len(labels)],
+        autopct=lambda p: f"{p:.1f}%" if p > 3 else "",
+        startangle=90,
+        pctdistance=0.78,
+        wedgeprops=dict(width=0.42, edgecolor="white", linewidth=2),
+        textprops=dict(fontsize=9, color="#334155"),
+    )
+    for at in autotexts:
+        at.set_fontweight("bold")
+        at.set_color("white")
+        at.set_fontsize(8)
+
+    if center_text:
+        ax.text(0, 0, center_text, ha="center", va="center",
+                fontsize=11, fontweight="bold", color="#0f172a")
+
+    ax.axis("equal")
+    return fig_to_base64(fig)
+
+
+def make_trend_chart(months, incomes, expenses, savings):
+    """Grouped bar chart for a year's monthly trend."""
+    fig, ax = plt.subplots(figsize=(7, 3.2))
+    x = range(len(months))
+    width = 0.26
+
+    ax.bar([i - width for i in x], incomes, width, label="Income",
+           color="#4F46E5", zorder=3)
+    ax.bar(list(x), expenses, width, label="Expenses",
+           color="#EF4444", zorder=3)
+    ax.bar([i + width for i in x], savings, width, label="Savings",
+           color="#10B981", zorder=3)
+
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(months, fontsize=9)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.tick_params(left=False, labelleft=False)
+    ax.set_axisbelow(True)
+    ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12),
+              ncol=3, frameon=False, fontsize=9)
+
+    return fig_to_base64(fig)
 
 # =======================================
 # Download pdf route for Dashboard
@@ -181,18 +317,15 @@ pdf_options = {
 def download_dashboard_pdf():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
-        # 👇 ADD THIS SAFETY CHECK 👇
+    
     if not config or not config.wkhtmltopdf:
-        flash("PDF generation is not configured on this server. Please contact support.", "error")
+        flash("PDF generation is not configured on this server.", "error")
         return redirect(url_for('dashboard'))
-    # 👆 END OF SAFETY CHECK 👆
     
     user_id = int(session['user_id'])
     username = session.get('username', 'user')
     cleaned_username = username.capitalize()
     
-    # 1. Fetch EXACTLY like the dashboard route
     budget_query = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc())
     selected_month = session.get("selected_month")
     budget = None
@@ -205,7 +338,6 @@ def download_dashboard_pdf():
         flash("No data to export.", "error")
         return redirect(url_for('dashboard'))
 
-    # 2. Fetch Expenses
     expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
     total_expenses = sum(float(exp.expense_amount) for exp in expenses)
     savings = float(budget.monthly_income) - total_expenses
@@ -216,7 +348,6 @@ def download_dashboard_pdf():
         amt = float(exp.expense_amount)
         category_totals[cat] = category_totals.get(cat, 0) + amt
 
-    # 3. Build the dict
     budget_result = {
         "month_name": budget.month_name,
         "monthly_income": float(budget.monthly_income),
@@ -229,90 +360,49 @@ def download_dashboard_pdf():
         } for exp in expenses]
     }
 
-    # 4. Generate QuickChart Images
-    from urllib.parse import quote
+    # --- GENERATE CHARTS LOCALLY (Using Global Helpers) ---
+    bar_base64 = make_bar_chart(
+        budget_result['monthly_income'], 
+        budget_result['total_expenses'], 
+        budget_result['savings']
+    )
     
-    # -- Chart 1: Budget Breakdown (Bar Chart) --
-    bar_config = f"""{{
-        type: 'bar',
-        data: {{
-            labels: ['Income', 'Expenses', 'Savings'],
-            datasets: [{{
-                label: 'Amount (₹)',
-                data: [{budget_result['monthly_income']}, {budget_result['total_expenses']}, {budget_result['savings']}],
-                backgroundColor: ['#4F46E5', '#EF4444', '#10B981'],
-                borderRadius: 4,
-                barPercentage: 0.5
-            }}]
-        }},
-        options: {{
-            plugins: {{ legend: {{ display: false }} }},
-            scales: {{ 
-                y: {{ beginAtZero: true }},
-                x: {{ grid: {{ display: false }} }}
-            }}
-        }}
-    }}"""
-    bar_url = f"https://quickchart.io/chart?c={quote(bar_config.replace('\n', '').replace(' ', ''))}&w=500&h=250&bkg=white"
+    alloc_base64 = make_doughnut(
+        ["Expenses", "Savings"],
+        [budget_result['total_expenses'], max(0, budget_result['savings'])],
+        ["#f43f5e", "#10b981"],
+        center_text=f"₹{budget_result['monthly_income']:,.0f}",
+    )
 
-    # -- Chart 2: Income Allocation (Doughnut Chart) --
-    alloc_config = f"""{{
-        type: 'doughnut',
-        data: {{
-            labels: ['Expenses', 'Savings'],
-            datasets: [{{
-                data: [{budget_result['total_expenses']}, {max(0, budget_result['savings'])}],
-                backgroundColor: ['#f43f5e', '#10b981']
-            }}]
-        }},
-        options: {{
-            plugins: {{ legend: {{ position: 'bottom' }} }}
-        }}
-    }}"""
-    alloc_url = f"https://quickchart.io/chart?c={quote(alloc_config.replace('\n', '').replace(' ', ''))}&w=400&h=250&bkg=white"
+    pie_base64 = None
+    if category_totals:
+        cats = list(category_totals.keys())
+        vals = list(category_totals.values())
+        pie_base64 = make_doughnut(
+            cats, 
+            vals, 
+            CATEGORY_PALETTE,
+            center_text=f"₹{sum(vals):,.0f}",
+        )
 
-    # -- Chart 3: Expense Categories (Doughnut Chart) --
-    cat_labels = list(category_totals.keys())
-    cat_values = list(category_totals.values())
-    
-    if cat_labels:
-        pie_config = f"""{{
-            type: 'doughnut',
-            data: {{
-                labels: {cat_labels},
-                datasets: [{{
-                    data: {cat_values},
-                    backgroundColor: ['#818cf8', '#f472b6', '#fbbf24', '#34d399', '#a78bfa', '#22d3ee']
-                }}]
-            }},
-            options: {{
-                plugins: {{ legend: {{ position: 'bottom' }} }}
-            }}
-        }}"""
-        pie_url = f"https://quickchart.io/chart?c={quote(pie_config.replace('\n', '').replace(' ', ''))}&w=400&h=250&bkg=white"
-    else:
-        pie_url = None
-
-    # 5. Render template
     logo_url = url_for('static', filename='icon/favicon.png', _external=True)
 
-    html = render_template(
-        'pdf_dashboard.html', 
-        budget_result=budget_result, 
-        username=cleaned_username,
-        now=datetime.now(IST),
-        bar_url=bar_url,
-        alloc_url=alloc_url,  # 👈 Add this
-        pie_url=pie_url,
-        logo_url=logo_url
-    )
-        
     try:
+        html = render_template(
+            'pdf_dashboard.html', 
+            budget_result=budget_result, 
+            username=cleaned_username,
+            now=datetime.now(IST),
+            bar_base64=bar_base64,
+            alloc_base64=alloc_base64,
+            pie_base64=pie_base64,
+            logo_url=logo_url
+        )
+
         pdf = pdfkit.from_string(html, False, options=pdf_options, configuration=config)
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
         
-        # e.g., budget_wisely_february_2027_monthly_report_13_Nov_2026_03-42AM
         safe_month_name = budget.month_name.replace(' ', '_').lower()
         timestamp = datetime.now(IST).strftime('%d_%b_%Y_%I-%M%p')
         filename = f"budget_wisely_{safe_month_name}_monthly_report_{timestamp}.pdf"
@@ -320,19 +410,25 @@ def download_dashboard_pdf():
         response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     except Exception as e:
-        flash(f"PDF generation failed: {str(e)}", "error")
+        app.logger.error(f"PDF Generation Error: {str(e)}")
+        flash(f"PDF generation failed. Please check server logs.", "error")
         return redirect(url_for('dashboard'))
+
 
 @app.route("/download_all_budgets_pdf")
 def download_all_budgets_pdf():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
+
+    if not config or not config.wkhtmltopdf:
+        flash("PDF generation is not configured on this server.", "error")
+        return redirect(url_for('all_budgets'))
+
     user_id = int(session['user_id'])
     username = session.get('username', 'user')
     cleaned_username = username.capitalize()
-    
-    scope = request.args.get('scope', 'lifetime') 
+
+    scope = request.args.get('scope', 'lifetime')
     target_year = request.args.get('year')
     target_month = request.args.get('month')
 
@@ -342,47 +438,45 @@ def download_all_budgets_pdf():
         'September': 9, 'October': 10, 'November': 11, 'December': 12
     }
 
-    all_user_budgets = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc()).all()
+    all_user_budgets = UserBudget.query.filter_by(user_id=user_id) \
+        .order_by(UserBudget.id.desc()).all()
     if not all_user_budgets:
         flash("No data to export.", "error")
         return redirect(url_for('all_budgets'))
 
-    # 1. Build the exact same structure as the website
-    groups = {}
-    uncategorized = []
+    # ---------- 1. Build hierarchy cleanly ----------
+    groups, uncategorized = {}, []
 
     for budget in all_user_budgets:
-        expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc()).all()
-        expense_items = []
-        total_expenses = 0.0
-        
-        category_totals = {}
+        expenses = Expense.query.filter_by(budget_id=budget.id) \
+            .order_by(Expense.date.desc()).all()
+        expense_items, total_expenses, category_totals = [], 0.0, {}
+
         for exp in expenses:
             amount = float(exp.expense_amount)
             expense_items.append({
                 "category": exp.expense_category, "amount": amount,
-                "dayname": exp.day_name, "date": exp.date
+                "dayname": exp.day_name, "date": exp.date,
             })
             total_expenses += amount
-            category_totals[exp.expense_category] = category_totals.get(exp.expense_category, 0) + amount
+            category_totals[exp.expense_category] = (
+                category_totals.get(exp.expense_category, 0) + amount
+            )
 
         savings = float(budget.monthly_income) - total_expenses
         raw_month = (budget.month_name or "").strip()
         parts = raw_month.split()
         month_word = parts[0] if parts else ""
-        year_val = None
-        for token in parts[1:]:
-            if token.isdigit():
-                year_val = int(token)
-                break
+        year_val = next((int(t) for t in parts[1:] if t.isdigit()), None)
 
         record = {
-            "month_name": raw_month, "month_word": month_word, "month_num": MONTH_ORDER.get(month_word, 0),
-            "year": year_val, "monthly_income": float(budget.monthly_income),
+            "month_name": raw_month, "month_word": month_word,
+            "month_num": MONTH_ORDER.get(month_word, 0), "year": year_val,
+            "monthly_income": float(budget.monthly_income),
             "total_expenses": total_expenses, "savings": savings,
-            "category_totals": category_totals, "expenses": expense_items
+            "category_totals": category_totals, "expenses": expense_items,
         }
-
+        
         if year_val is None:
             uncategorized.append(record)
         else:
@@ -390,29 +484,33 @@ def download_all_budgets_pdf():
 
     budgets_by_year = []
     for year in sorted(groups.keys(), reverse=True):
-        year_budgets = sorted(groups[year], key=lambda b: (b["month_num"], b["month_name"]), reverse=True)
-        total_income = sum(b["monthly_income"] for b in year_budgets)
-        total_exp = sum(b["total_expenses"] for b in year_budgets)
-        
+        year_budgets = sorted(
+            groups[year], key=lambda b: (b["month_num"], b["month_name"]),
+            reverse=True,
+        )
+        ti = sum(b["monthly_income"] for b in year_budgets)
+        te = sum(b["total_expenses"] for b in year_budgets)
         budgets_by_year.append({
-            "label": str(year), "year": year, "is_uncategorized": False, "budgets": year_budgets,
-            "total_income": total_income, "total_expenses": total_exp, "total_savings": total_income - total_exp
+            "label": str(year), "year": year, "is_uncategorized": False,
+            "budgets": year_budgets,
+            "total_income": ti, "total_expenses": te, "total_savings": ti - te,
         })
 
     if uncategorized:
         uncategorized.sort(key=lambda b: (b["month_num"], b["month_name"]), reverse=True)
-        total_income = sum(b["monthly_income"] for b in uncategorized)
-        total_exp = sum(b["total_expenses"] for b in uncategorized)
+        ti = sum(b["monthly_income"] for b in uncategorized)
+        te = sum(b["total_expenses"] for b in uncategorized)
         budgets_by_year.append({
-            "label": "Uncategorized", "year": None, "is_uncategorized": True, "budgets": uncategorized,
-            "total_income": total_income, "total_expenses": total_exp, "total_savings": total_income - total_exp
+            "label": "Uncategorized", "year": None, "is_uncategorized": True,
+            "budgets": uncategorized,
+            "total_income": ti, "total_expenses": te, "total_savings": ti - te,
         })
 
-    lifetime_income = sum(g['total_income'] for g in budgets_by_year)
-    lifetime_expenses = sum(g['total_expenses'] for g in budgets_by_year)
+    lifetime_income = sum(g["total_income"] for g in budgets_by_year)
+    lifetime_expenses = sum(g["total_expenses"] for g in budgets_by_year)
     lifetime_savings = lifetime_income - lifetime_expenses
 
-    # 2. Filter based on scope
+    # ---------- 2. Filter by scope ----------
     filtered_groups = []
     for group in budgets_by_year:
         if scope == 'lifetime':
@@ -420,125 +518,88 @@ def download_all_budgets_pdf():
         elif scope == 'yearly' and str(group['label']) == str(target_year):
             filtered_groups.append(group)
         elif scope == 'monthly':
-            # Only keep the specific month
-            matching_budgets = [b for b in group['budgets'] if b['month_name'].lower() == target_month.lower()]
-            if matching_budgets:
+            matching = [
+                b for b in group["budgets"]
+                if b["month_name"].lower() == (target_month or "").lower()
+            ]
+            if matching:
                 filtered_groups.append({
-                    **group, "budgets": matching_budgets,
-                    "total_income": matching_budgets[0]['monthly_income'],
-                    "total_expenses": matching_budgets[0]['total_expenses'],
-                    "total_savings": matching_budgets[0]['savings']
+                    **group, "budgets": matching,
+                    "total_income": matching[0]["monthly_income"],
+                    "total_expenses": matching[0]["total_expenses"],
+                    "total_savings": matching[0]["savings"],
                 })
 
     if not filtered_groups:
         flash("No data found for this scope.", "error")
         return redirect(url_for('all_budgets'))
 
-    # 3. Generate QuickCharts for all levels
-    from urllib.parse import quote
-    
-    def generate_bar_chart(labels, data, colors=None):
-        # Use default colors if none passed
-        if not colors:
-            colors = "['#4F46E5', '#EF4444', '#10B981']"
-
-        config = f"""{{
-            type: 'bar',
-            data: {{
-                labels: {labels},
-                datasets: [{{
-                    label: 'Amount (₹)',
-                    data: {data},
-                    backgroundColor: {colors},
-                    borderRadius: 4,
-                    barPercentage: 0.5
-                }}]
-            }},
-            options: {{ 
-                plugins: {{ legend: {{ display: false }} }}, 
-                scales: {{ 
-                    y: {{ beginAtZero: true }},
-                    x: {{ grid: {{ display: false }} }}
-                }} 
-            }}
-        }}"""
-        return f"https://quickchart.io/chart?c={quote(config.replace(chr(10), '').replace(' ', ''))}&w=600&h=250&bkg=white"
-
-    def generate_doughnut_chart(labels, data, colors):
-        config = f"""{{
-            type: 'doughnut',
-            data: {{ labels: {labels}, datasets: [{{ data: {data}, backgroundColor: {colors} }}] }},
-            options: {{ plugins: {{ legend: {{ position: 'bottom' }} }} }}
-        }}"""
-        return f"https://quickchart.io/chart?c={quote(config.replace(chr(10), '').replace(' ', ''))}&w=400&h=250&bkg=white"
-
-    # Attach chart URLs to the data
+    # ---------- 3. Generate charts locally (base64) ----------
     for group in filtered_groups:
-        # Yearly Trend Chart (if more than 1 month)
-        months = [b['month_word'] for b in reversed(group['budgets'])]
-        inc = [b['monthly_income'] for b in reversed(group['budgets'])]
-        exp = [b['total_expenses'] for b in reversed(group['budgets'])]
-        sav = [b['savings'] for b in reversed(group['budgets'])]
-        if len(months) > 1:
-            group['trend_chart_url'] = generate_bar_chart(months, inc, exp, sav)
+        # Yearly trend (only if >1 month)
+        months = [b["month_word"] for b in reversed(group["budgets"])]
+        inc = [b["monthly_income"] for b in reversed(group["budgets"])]
+        exp = [b["total_expenses"] for b in reversed(group["budgets"])]
+        sav = [b["savings"] for b in reversed(group["budgets"])]
+        group["trend_base64"] = (
+            make_trend_chart(months, inc, exp, sav) if len(months) > 1 else None
+        )
 
-        # Monthly Charts
-        for b in group['budgets']:
-            # Bar Chart (Single dataset, 3 bars)
-            b['bar_url'] = generate_bar_chart(
-                "['Income', 'Expenses', 'Savings']", 
-                f"[{b['monthly_income']}, {b['total_expenses']}, {b['savings']}]",
-                "['#4F46E5', '#EF4444', '#10B981']"
+        # Monthly charts
+        for b in group["budgets"]:
+            b["bar_base64"] = make_bar_chart(
+                b["monthly_income"], b["total_expenses"], b["savings"]
             )
-            # Income Allocation Chart
-            b['alloc_url'] = generate_doughnut_chart(
-                "['Expenses', 'Savings']", 
-                f"[{b['total_expenses']}, {max(0, b['savings'])}]",
-                "['#f43f5e', '#10b981']"
+            b["alloc_base64"] = make_doughnut(
+                ["Expenses", "Savings"],
+                [b["total_expenses"], max(0, b["savings"])],
+                ["#f43f5e", "#10b981"],
+                center_text=f"₹{b['monthly_income']:,.0f}",
             )
-            # Category Chart
-            if b['category_totals']:
-                cat_labels = list(b['category_totals'].keys())
-                cat_vals = list(b['category_totals'].values())
-                b['pie_url'] = generate_doughnut_chart(
-                    str(cat_labels), str(cat_vals),
-                    "['#818cf8', '#f472b6', '#fbbf24', '#34d399', '#a78bfa', '#22d3ee']"
+            if b["category_totals"]:
+                cats = list(b["category_totals"].keys())
+                vals = list(b["category_totals"].values())
+                b["pie_base64"] = make_doughnut(
+                    cats, vals, CATEGORY_PALETTE,
+                    center_text=f"₹{sum(vals):,.0f}",
                 )
+            else:
+                b["pie_base64"] = None
 
-    # 4. Render Template
+    # ---------- 4. Render + build PDF ----------
     logo_url = url_for('static', filename='icon/favicon.png', _external=True)
     
-    html = render_template(
-        'pdf_all_budgets.html',
-        groups=filtered_groups,
-        lifetime_income=lifetime_income,
-        lifetime_expenses=lifetime_expenses,
-        lifetime_savings=lifetime_savings,
-        scope=scope,
-        username=cleaned_username,
-        now=datetime.now(IST),
-        logo_url=logo_url
-    )
-    
     try:
+        html = render_template(
+            "pdf_all_budgets.html",
+            groups=filtered_groups,
+            lifetime_income=lifetime_income,
+            lifetime_expenses=lifetime_expenses,
+            lifetime_savings=lifetime_savings,
+            scope=scope,
+            username=cleaned_username,
+            now=datetime.now(IST),
+            logo_url=logo_url,
+        )
+
         pdf = pdfkit.from_string(html, False, options=pdf_options, configuration=config)
         response = make_response(pdf)
-        response.headers['Content-Type'] = 'application/pdf'
-        
-        timestamp = datetime.now(IST).strftime('%d_%b_%Y_%I-%M%p')
-        
-        if scope == 'monthly':
-            safe_month = target_month.replace(' ', '_').lower()
+        response.headers["Content-Type"] = "application/pdf"
+
+        timestamp = datetime.now(IST).strftime("%d_%b_%Y_%I-%M%p")
+        if scope == "monthly":
+            safe_month = (target_month or "").replace(" ", "_").lower()
             filename = f"budget_wisely_{safe_month}_monthly_report_{timestamp}.pdf"
-        elif scope == 'yearly':
+        elif scope == "yearly":
             filename = f"budget_wisely_{target_year}_yearly_report_{timestamp}.pdf"
         else:
             filename = f"budget_wisely_lifetime_report_{timestamp}.pdf"
-        
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
     except Exception as e:
-        flash(f"PDF generation failed: {str(e)}", "error")
+        app.logger.error(f"PDF Generation Error: {str(e)}")
+        flash(f"PDF generation failed. Please check server logs.", "error")
         return redirect(url_for('all_budgets'))
     
 # Application Routes
@@ -2172,4 +2233,4 @@ def shutdown_session(exception=None):
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=False, use_reloader=True)
