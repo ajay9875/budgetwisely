@@ -9,6 +9,10 @@ from flask_migrate import Migrate  # 👈 Add this at the top
 import os
 import io
 import base64
+
+import os
+# Set a writable cache directory for Matplotlib on PythonAnywhere
+os.environ['MPLCONFIGDIR'] = '/tmp/matplotlib-cache'
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -249,64 +253,69 @@ def make_doughnut(labels, values, colors, center_text=None):
 
 
 def make_trend_chart(months, incomes, expenses, savings):
-    # Adjust chart width according to the number of months
-    fig_width = max(7, min(12, len(months) * 0.75))
-    fig, ax = plt.subplots(figsize=(fig_width, 3.2))
+    try:    # Adjust chart width according to the number of months
+        fig_width = max(7, min(12, len(months) * 0.75))
+        fig, ax = plt.subplots(figsize=(fig_width, 3.2))
 
-    # Balanced spacing between monthly groups
-    group_spacing = 1.25
-    x = [i * group_spacing for i in range(len(months))]
+        # Balanced spacing between monthly groups
+        group_spacing = 1.25
+        x = [i * group_spacing for i in range(len(months))]
 
-    # Grouped bars
-    width = 0.16
-    offset = 0.21
+        # Grouped bars
+        width = 0.16
+        offset = 0.21
 
-    bars1 = ax.bar([i - offset for i in x], incomes, width, label="Income", color="#4F46E5", zorder=3)
-    bars2 = ax.bar(x, expenses, width, label="Expenses", color="#EF4444", zorder=3)
-    bars3 = ax.bar([i + offset for i in x], savings, width, label="Savings", color="#10B981", zorder=3)
+        bars1 = ax.bar([i - offset for i in x], incomes, width, label="Income", color="#4F46E5", zorder=3)
+        bars2 = ax.bar(x, expenses, width, label="Expenses", color="#EF4444", zorder=3)
+        bars3 = ax.bar([i + offset for i in x], savings, width, label="Savings", color="#10B981", zorder=3)
 
-    # Month labels
-    ax.set_xticks(x)
-    ax.set_xticklabels(months, fontsize=9)
+        # Month labels
+        ax.set_xticks(x)
+        ax.set_xticklabels(months, fontsize=9)
 
-    # Balanced chart boundaries
-    ax.set_xlim(-0.65, x[-1] + 0.65)
+        # Balanced chart boundaries
+        ax.set_xlim(-0.65, x[-1] + 0.65)
 
-    # 👇 FORMAT Y-AXIS TICKS TO SHOW ₹ AND COMMAS 👇
-    from matplotlib.ticker import FuncFormatter
-    ax.yaxis.set_major_formatter(FuncFormatter(lambda val, pos: f'₹{val:,.0f}'))
+        # 👇 FORMAT Y-AXIS TICKS TO SHOW ₹ AND COMMAS 👇
+        from matplotlib.ticker import FuncFormatter
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda val, pos: f'₹{val:,.0f}'))
 
-    # Clean appearance
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_visible(False)
-    ax.spines["bottom"].set_color("#cbd5e1")
+        # Clean appearance
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["bottom"].set_color("#cbd5e1")
 
-    ax.tick_params(left=False, labelleft=True, bottom=False, labelsize=8) # Show Y labels
-    ax.set_axisbelow(True)
+        ax.tick_params(left=False, labelleft=True, bottom=False, labelsize=8) # Show Y labels
+        ax.set_axisbelow(True)
 
-    ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
+        ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
 
-    # 👇 ADD VALUE LABELS ON TOP OF BARS 👇
-    for bars in [bars1, bars2, bars3]:
-        for bar in bars:
-            height = bar.get_height()
-            if height > 0:
-                ax.annotate(
-                    f'₹{height:,.0f}',
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3), # 3 points vertical offset
-                    textcoords="offset points",
-                    ha='center', va='bottom',
-                    fontsize=7, color="#334155"
-                )
+        # 👇 ADD VALUE LABELS ON TOP OF BARS 👇
+        for bars in [bars1, bars2, bars3]:
+            for bar in bars:
+                height = bar.get_height()
+                if height > 0:
+                    ax.annotate(
+                        f'₹{height:,.0f}',
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom',
+                        fontsize=7, color="#334155"
+                    )
 
-    # Legend
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, frameon=False, fontsize=9)
+        # Legend
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, frameon=False, fontsize=9)
 
-    fig.tight_layout(pad=1.2)
+        fig.tight_layout(pad=1.2)
 
-    return fig_to_base64(fig)
+        return fig_to_base64(fig)
+    except Exception as e:
+        import traceback
+        print(f"Trend Chart Error: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return None # Return None so the template skips the chart
 
 @app.route('/favicon.ico')
 def favicon():
