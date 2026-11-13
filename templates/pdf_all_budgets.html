@@ -196,6 +196,30 @@ table.data-table tbody tr:hover { background: #eef2ff; }  /* ignored in PDF, har
                 </tr>
             </table>
 
+                        <!-- 👇 ADD CATEGORY BREAKDOWN TABLE HERE 👇 -->
+            {% if budget.category_totals %}
+            <h3 style="font-size: 15px; color: #334155; margin-top: 10px;">Category Breakdown</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Category</th>
+                        <th class="text-right">Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, total in budget.category_totals.items() %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ category }}</td>
+                        <td class="text-right">₹{{ "%.2f"|format(total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            <!-- 👆 END OF CATEGORY BREAKDOWN 👆 -->
+
             <!-- Detailed Expenses Table -->
             <h3 style="font-size: 15px; color: #334155; margin-top: 10px;">Detailed Expenses</h3>
             {% if budget.expenses %}

@@ -188,22 +188,43 @@ def make_bar_chart(income, expenses, savings):
     return fig_to_base64(fig)
 
 def make_doughnut(labels, values, colors, center_text=None):
-    fig, ax = plt.subplots(figsize=(4, 4))
+    fig, ax = plt.subplots(figsize=(6, 4)) # Increased width to fit legend
+    
+    # Truncate labels to 10 characters + "..."
+    truncated_labels = [f"{label[:10]}..." if len(label) > 10 else label for label in labels]
+    
     wedges, texts, autotexts = ax.pie(
-        values, labels=None, colors=colors[: len(labels)],
-        autopct=lambda p: f"{p:.1f}%",
-        startangle=90, pctdistance=0.78,
-        wedgeprops=dict(width=0.42, edgecolor="white", linewidth=2),
-        textprops=dict(fontsize=9, color="#334155"),
+        values, 
+        labels=None, 
+        colors=colors[: len(labels)],
+        autopct=lambda p: f"{p:.1f}%" if p > 2 else "", # Only show % if > 2% to avoid clutter
+        startangle=90, 
+        pctdistance=0.75,
+        wedgeprops=dict(width=0.4, edgecolor="white", linewidth=2),
+        textprops=dict(fontsize=8, color="#334155"),
     )
+    
     for at in autotexts:
         at.set_fontweight("bold")
         at.set_color("white")
-        at.set_fontsize(8)
+        at.set_fontsize(7) # Slightly smaller for crowded slices
+        
     if center_text:
         ax.text(0, 0, center_text, ha="center", va="center",
                 fontsize=11, fontweight="bold", color="#0f172a")
+                
     ax.axis("equal")
+    
+    # 👇 ADD LEGEND AT BOTTOM 👇
+    ax.legend(
+        wedges, truncated_labels, 
+        loc="upper center", 
+        bbox_to_anchor=(0.5, 0.05), 
+        ncol=3, # 3 columns of legends
+        frameon=False,
+        fontsize=8
+    )
+    
     return fig_to_base64(fig)
 
 def make_trend_chart(months, incomes, expenses, savings):
@@ -261,6 +282,11 @@ pdf_options = {
     'enable-local-file-access': None, # Crucial for CSS/Fonts to load
     'print-media-type': None,
 }
+
+import uuid
+import tempfile
+import threading
+from flask import jsonify
 
 # =======================================
 # Download pdf route for Dashboard
@@ -358,21 +384,32 @@ def download_dashboard_pdf():
             logo_url=logo_base64,
         )
 
-        # WeasyPrint generates the PDF
         pdf_bytes = HTML(string=html).write_pdf()
-        response = make_response(pdf_bytes)
-        response.headers['Content-Type'] = 'application/pdf'
         
-        safe_month_name = budget.month_name.replace(' ', '_').lower()
-        timestamp = datetime.now(IST).strftime('%d_%b_%Y_%I-%M%p')
-        filename = f"budget_wisely_{safe_month_name}_monthly_report_{timestamp}.pdf"
-        
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        # 👇 SIMPLER AJAX LOGIC 👇
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Convert PDF to Base64
+            pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+            
+            # Consistent filename based on the month
+            safe_month_name = budget.month_name.replace(' ', '_')
+            short_name = f"Budget_Wisely_{safe_month_name}_Report.pdf"
+
+            return jsonify({
+                'success': True, 
+                'message': 'PDF generated successfully!', 
+                'pdf_base64': pdf_base64,
+                'filename': short_name
+            })
+
+        # If somehow reached without AJAX, return an error JSON
+        return jsonify({'success': False, 'error': 'Invalid request headers'}), 400        
     except Exception as e:
         app.logger.error(f"PDF Generation Error: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': str(e)})
         flash(f"PDF generation failed. Please check server logs.", "error")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dashboard')) # or 'all_budgets'
 
 @app.route("/download_all_budgets_pdf")
 def download_all_budgets_pdf():
@@ -533,24 +570,37 @@ def download_all_budgets_pdf():
         )
 
         pdf_bytes = HTML(string=html).write_pdf()
-        response = make_response(pdf_bytes)
-        response.headers["Content-Type"] = "application/pdf"
+        
+        # 👇 SIMPLER AJAX LOGIC 👇
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Convert PDF to Base64
+            pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+            
+            # Consistent filename based on the scope
+            if scope == "monthly":
+                safe_month = (target_month or "").replace(" ", "_")
+                short_name = f"Budget_Wisely_{safe_month}_Report.pdf"
+            elif scope == "yearly":
+                short_name = f"Budget_Wisely_{target_year}_Report.pdf"
+            else:
+                short_name = f"Budget_Wisely_Lifetime_Report.pdf"
 
-        timestamp = datetime.now(IST).strftime("%d_%b_%Y_%I-%M%p")
-        if scope == "monthly":
-            safe_month = (target_month or "").replace(" ", "_").lower()
-            filename = f"budget_wisely_{safe_month}_monthly_report_{timestamp}.pdf"
-        elif scope == "yearly":
-            filename = f"budget_wisely_{target_year}_yearly_report_{timestamp}.pdf"
-        else:
-            filename = f"budget_wisely_lifetime_report_{timestamp}.pdf"
+            return jsonify({
+                'success': True, 
+                'message': 'PDF generated successfully!', 
+                'pdf_base64': pdf_base64,
+                'filename': short_name
+            })
 
-        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
-    except Exception as e: 
+        # If somehow reached without AJAX, return an error JSON
+        return jsonify({'success': False, 'error': 'Invalid request headers'}), 400
+            
+    except Exception as e:
         app.logger.error(f"PDF Generation Error: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': str(e)})
         flash(f"PDF generation failed. Please check server logs.", "error")
-        return redirect(url_for('all_budgets'))
+        return redirect(url_for('all_budgets')) # or 'all_budgets'
     
 # Application Routes
 @app.route('/')

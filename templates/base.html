@@ -231,28 +231,101 @@
             }
         });
 
-    function downloadPDF(event, url, button) {
-        event.preventDefault(); // Stop immediate navigation
-        
-        // Change button state
-        const originalHtml = button.innerHTML;
-        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Downloading...';
-        button.style.opacity = '0.7';
-        button.style.cursor = 'not-allowed';
-        
-        // Prevent multiple clicks
-        button.onclick = function(e) { e.preventDefault(); };
+function downloadPDF(event, url, button) {
+    event.preventDefault(); 
+    
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+    button.style.opacity = '0.7';
+    button.style.cursor = 'not-allowed';
+    button.onclick = function(e) { e.preventDefault(); };
 
-        // Trigger the download
-        window.location.href = url;
+    // 👇 Custom loader that WILL NOT timeout after 15 seconds
+    const overlay = document.getElementById('loading-overlay');
+    const textElement = document.getElementById('loading-text');
+    if (overlay && textElement) {
+        textElement.innerText = "Generating your PDF report...";
+        overlay.style.display = 'flex';
+        requestAnimationFrame(() => overlay.classList.add('show'));
+    }
 
-        // Restore after 5 seconds
+    fetch(url, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Hide loader
+        if (overlay) {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.style.display = 'none', 200);
+        }
+
+        if (data.success) {
+            // Decode and download
+            const byteCharacters = atob(data.pdf_base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = data.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(link.href);
+
+            // 👇 SHOW FLASH MESSAGE (Same as VerifyOTP style) 👇
+            const msgContainer = document.querySelector('.message');
+            if (msgContainer) {
+                msgContainer.innerHTML = `
+                    <div class="flash-messages">
+                        <div class="flash-message success">✅ PDF generated successfully! Check your downloads.</div>
+                    </div>
+                `;
+                // Auto-hide message after 5 seconds
+                setTimeout(() => { msgContainer.innerHTML = ''; }, 5000);
+            }
+        } else {
+            // Show error flash message
+            const msgContainer = document.querySelector('.message');
+            if (msgContainer) {
+                msgContainer.innerHTML = `
+                    <div class="flash-messages">
+                        <div class="flash-message error">❌ ${data.error || "Failed to generate PDF."}</div>
+                    </div>
+                `;
+            }
+        }
+    })
+    .catch(error => {
+        console.error("Fetch error:", error);
+        if (overlay) {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.style.display = 'none', 200);
+        }
+        const msgContainer = document.querySelector('.message');
+        if (msgContainer) {
+            msgContainer.innerHTML = `
+                <div class="flash-messages">
+                    <div class="flash-message error">❌ Network error. Please try again.</div>
+                </div>
+            `;
+        }
+    })
+    .finally(() => {
         setTimeout(() => {
             button.innerHTML = originalHtml;
             button.style.opacity = '1';
             button.style.cursor = 'pointer';
-        }, 25000);
-    }
+            button.onclick = null;
+        }, 3000);
+    });
+}
 </script>
     
     <!-- Page-specific Scripts -->
