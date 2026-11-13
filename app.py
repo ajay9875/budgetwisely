@@ -559,7 +559,7 @@ def download_all_budgets_pdf():
 
         response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
-    except Exception as e:
+    except Exception as e: 
         app.logger.error(f"PDF Generation Error: {str(e)}")
         flash(f"PDF generation failed. Please check server logs.", "error")
         return redirect(url_for('all_budgets'))
