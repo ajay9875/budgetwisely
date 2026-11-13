@@ -3,13 +3,16 @@ import random
 import smtplib
 from calendar import month_name
 from datetime import datetime, timedelta
+from weasyprint import HTML
 from functools import wraps
 from flask_migrate import Migrate  # 👈 Add this at the top
+import os
 import io
 import base64
 import matplotlib
-matplotlib.use('Agg') # Required for server-side rendering
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from weasyprint import HTML
 
 from dotenv import load_dotenv
 from email_validator import EmailNotValidError, validate_email
@@ -18,6 +21,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
 from dateutil.relativedelta import relativedelta
+from pyvirtualdisplay import Display
 
 # Handle PyMySQL binding safely if driver is present
 try:
@@ -113,7 +117,7 @@ IST = ZoneInfo("Asia/Kolkata")
 
 # Add this function right above your routes (e.g., right after the `never_cache` function):
 def to_ist(utc_dt):
-    if not utc_dt: 
+    if not utc_dt:
         return None
     # Convert UTC to IST (UTC + 5:30)
     return utc_dt.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=5, minutes=30)))
@@ -140,69 +144,6 @@ def inject_session_status():
 
     return dict(is_logged_in=is_logged_in)
 
-@app.route('/favicon.ico')
-def favicon():
-    return redirect(url_for('static', filename='icon/favicon.png'))
-
-import os
-import pdfkit
-import shutil
-
-# 👇 Robust wkhtmltopdf configuration
-config = None
-try:
-    if os.name == 'nt': # Windows
-        paths = [
-            r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe',
-            r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
-        ]
-        for p in paths:
-            if os.path.exists(p):
-                config = pdfkit.configuration(wkhtmltopdf=p)
-                break
-    else: # Linux / Mac
-        # 1. Check custom path
-        custom_path = os.path.expanduser('~/wkhtmltopdf/usr/local/bin/wkhtmltopdf')
-        # 2. Check system path
-        system_path = shutil.which('wkhtmltopdf') or '/usr/bin/wkhtmltopdf'
-        
-        if os.path.exists(custom_path) and os.access(custom_path, os.X_OK):
-            config = pdfkit.configuration(wkhtmltopdf=custom_path)
-        elif os.path.exists(system_path) and os.access(system_path, os.X_OK):
-            config = pdfkit.configuration(wkhtmltopdf=system_path)
-            
-    if not config:
-        print("⚠️ Warning: wkhtmltopdf executable not found. PDF export will fail.")
-except Exception as e:
-    print(f"⚠️ Warning: wkhtmltopdf config error: {e}")
-    config = None
-
-# PDF Options (Fixed: no-outline removed, added enable-local-file-access)
-pdf_options = {
-    'page-size': 'A4',
-    'margin-top': '10mm',
-    'margin-bottom': '12mm',
-    'margin-left': '10mm',
-    'margin-right': '10mm',
-    'encoding': 'UTF-8',
-    'enable-local-file-access': '',
-    'disable-smart-shrinking': '',
-    'print-media-type': '',
-    'footer-center': 'Page [page] of [topage]',
-    'footer-font-size': '8',
-    # 'footer-color': '#94a3b8',   <-- REMOVED (not supported in 0.12.6)
-}
-    
-# =======================================
-# Download ALL budgets PDF (Matplotlib charts)
-# =======================================
-import io
-import base64
-import matplotlib
-matplotlib.use('Agg')                # headless backend (safe for Flask)
-import matplotlib.pyplot as plt
-
-# Global style polish for all charts
 plt.rcParams.update({
     "font.family": "DejaVu Sans",
     "font.size": 10,
@@ -219,7 +160,6 @@ CATEGORY_PALETTE = [
 ]
 
 def fig_to_base64(fig, dpi=160):
-    """Render a matplotlib figure to a base64 PNG (solid white bg)."""
     buf = io.BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight",
                 transparent=False, facecolor="white", dpi=dpi)
@@ -227,26 +167,16 @@ def fig_to_base64(fig, dpi=160):
     plt.close(fig)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-
 def make_bar_chart(income, expenses, savings):
-    """Income / Expenses / Savings bar chart."""
     fig, ax = plt.subplots(figsize=(6, 3.2))
     labels = ["Income", "Expenses", "Savings"]
     values = [income, expenses, savings]
     colors = ["#4F46E5", "#EF4444", "#10B981"]
-
     bars = ax.bar(labels, values, color=colors, width=0.55, zorder=3)
-
-    # Value labels on top of each bar
     for bar, val in zip(bars, values):
-        ax.annotate(
-            f"₹{val:,.0f}",
-            xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
-            xytext=(0, 4), textcoords="offset points",
-            ha="center", va="bottom", fontsize=9, fontweight="bold",
-            color="#1e293b",
-        )
-
+        ax.annotate(f"₹{val:,.0f}", xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
+                    xytext=(0, 4), textcoords="offset points", ha="center", va="bottom", 
+                    fontsize=9, fontweight="bold", color="#1e293b")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_color("#e2e8f0")
@@ -255,20 +185,14 @@ def make_bar_chart(income, expenses, savings):
     ax.set_axisbelow(True)
     ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
     ax.set_ylim(0, max(values + [1]) * 1.18)
-
     return fig_to_base64(fig)
 
-
 def make_doughnut(labels, values, colors, center_text=None):
-    """Generic doughnut chart."""
     fig, ax = plt.subplots(figsize=(4, 4))
     wedges, texts, autotexts = ax.pie(
-        values,
-        labels=labels,
-        colors=colors[: len(labels)],
+        values, labels=None, colors=colors[: len(labels)],
         autopct=lambda p: f"{p:.1f}%" if p > 3 else "",
-        startangle=90,
-        pctdistance=0.78,
+        startangle=90, pctdistance=0.78,
         wedgeprops=dict(width=0.42, edgecolor="white", linewidth=2),
         textprops=dict(fontsize=9, color="#334155"),
     )
@@ -276,28 +200,19 @@ def make_doughnut(labels, values, colors, center_text=None):
         at.set_fontweight("bold")
         at.set_color("white")
         at.set_fontsize(8)
-
     if center_text:
         ax.text(0, 0, center_text, ha="center", va="center",
                 fontsize=11, fontweight="bold", color="#0f172a")
-
     ax.axis("equal")
     return fig_to_base64(fig)
 
-
 def make_trend_chart(months, incomes, expenses, savings):
-    """Grouped bar chart for a year's monthly trend."""
     fig, ax = plt.subplots(figsize=(7, 3.2))
     x = range(len(months))
     width = 0.26
-
-    ax.bar([i - width for i in x], incomes, width, label="Income",
-           color="#4F46E5", zorder=3)
-    ax.bar(list(x), expenses, width, label="Expenses",
-           color="#EF4444", zorder=3)
-    ax.bar([i + width for i in x], savings, width, label="Savings",
-           color="#10B981", zorder=3)
-
+    ax.bar([i - width for i in x], incomes, width, label="Income", color="#4F46E5", zorder=3)
+    ax.bar(list(x), expenses, width, label="Expenses", color="#EF4444", zorder=3)
+    ax.bar([i + width for i in x], savings, width, label="Savings", color="#10B981", zorder=3)
     ax.set_xticks(list(x))
     ax.set_xticklabels(months, fontsize=9)
     ax.spines["top"].set_visible(False)
@@ -305,10 +220,47 @@ def make_trend_chart(months, incomes, expenses, savings):
     ax.tick_params(left=False, labelleft=False)
     ax.set_axisbelow(True)
     ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12),
-              ncol=3, frameon=False, fontsize=9)
-
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=3, frameon=False, fontsize=9)
     return fig_to_base64(fig)
+
+@app.route('/favicon.ico')
+def favicon():
+    return redirect(url_for('static', filename='icon/favicon.png'))
+
+import os
+import pdfkit
+
+# 👇 Safely configure pdfkit (prevents app crash if not installed)
+
+try:
+    if os.name == 'nt':
+        path_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+        if not os.path.exists(path_wkhtmltopdf):
+            path_wkhtmltopdf = r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
+        config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+    else:
+        # 👇 THIS points to the file you just downloaded 👇
+        path_wkhtmltopdf = os.path.expanduser('~/wkhtmltopdf/usr/local/bin/wkhtmltopdf')
+
+        if os.path.exists(path_wkhtmltopdf):
+            config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+        else:
+            config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf') # Fallback
+except Exception as e:
+    print(f"⚠️ Warning: wkhtmltopdf not found. PDF export will not work. Error: {e}")
+    config = None
+
+# PDF Options (Single, clean definition)
+pdf_options = {
+    'page-size': 'A4',
+    'margin-top': '15mm',
+    'margin-right': '15mm',
+    'margin-bottom': '15mm',
+    'margin-left': '15mm',
+    'encoding': "UTF-8",
+    'enable-local-file-access': None, # Crucial for CSS/Fonts to load
+    'print-media-type': None,
+}
 
 # =======================================
 # Download pdf route for Dashboard
@@ -317,15 +269,12 @@ def make_trend_chart(months, incomes, expenses, savings):
 def download_dashboard_pdf():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
-    if not config or not config.wkhtmltopdf:
-        flash("PDF generation is not configured on this server.", "error")
-        return redirect(url_for('dashboard'))
-    
+
     user_id = int(session['user_id'])
     username = session.get('username', 'user')
     cleaned_username = username.capitalize()
-    
+
+    # 1. Fetch Budget & Expenses
     budget_query = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc())
     selected_month = session.get("selected_month")
     budget = None
@@ -333,7 +282,7 @@ def download_dashboard_pdf():
         budget = budget_query.filter(func.lower(func.trim(UserBudget.month_name)) == selected_month.strip().lower()).first()
     if not budget:
         budget = budget_query.first()
-        
+
     if not budget:
         flash("No data to export.", "error")
         return redirect(url_for('dashboard'))
@@ -341,7 +290,7 @@ def download_dashboard_pdf():
     expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc(), Expense.id.desc()).all()
     total_expenses = sum(float(exp.expense_amount) for exp in expenses)
     savings = float(budget.monthly_income) - total_expenses
-    
+
     category_totals = {}
     for exp in expenses:
         cat = exp.expense_category
@@ -360,7 +309,7 @@ def download_dashboard_pdf():
         } for exp in expenses]
     }
 
-    # --- GENERATE CHARTS LOCALLY (Using Global Helpers) ---
+    # 2. Generate Matplotlib Charts Locally
     bar_base64 = make_bar_chart(
         budget_result['monthly_income'], 
         budget_result['total_expenses'], 
@@ -376,16 +325,32 @@ def download_dashboard_pdf():
 
     pie_base64 = None
     if category_totals:
-        cats = list(category_totals.keys())
-        vals = list(category_totals.values())
-        pie_base64 = make_doughnut(
-            cats, 
-            vals, 
-            CATEGORY_PALETTE,
-            center_text=f"₹{sum(vals):,.0f}",
-        )
+        # Top 5 + Other logic
+        sorted_cats = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)
+        top_cats = sorted_cats[:5]
+        other_sum = sum(amt for cat, amt in sorted_cats[5:])
+        if other_sum > 0:
+            top_cats.append(("Other", other_sum))
+        
+        cats = [cat for cat, amt in top_cats]
+        vals = [amt for cat, amt in top_cats]
+        
+        pie_base64 = make_doughnut(cats, vals, CATEGORY_PALETTE, f"₹{sum(vals):,.0f}")
 
-    logo_url = url_for('static', filename='icon/favicon.png', _external=True)
+    # 3. Pass absolute file path for logo
+    # Get the absolute path to the image folder (without file://)
+    # 4. Render Template (Pass absolute file path for logo to ensure it renders in WeasyPrint)
+    # Convert image to base64
+    import os
+    import base64
+    logo_path = os.path.join(app.root_path, 'static', 'icon', 'favicon.png')
+    try:
+        with open(logo_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            logo_base64 = f"data:image/png;base64,{encoded_string}"
+    except Exception as e:
+        app.logger.error(f"Logo not found: {e}")
+        logo_base64 = None
 
     try:
         html = render_template(
@@ -396,11 +361,12 @@ def download_dashboard_pdf():
             bar_base64=bar_base64,
             alloc_base64=alloc_base64,
             pie_base64=pie_base64,
-            logo_url=logo_url
+            logo_url=logo_base64,
         )
 
-        pdf = pdfkit.from_string(html, False, options=pdf_options, configuration=config)
-        response = make_response(pdf)
+        # WeasyPrint generates the PDF
+        pdf_bytes = HTML(string=html).write_pdf()
+        response = make_response(pdf_bytes)
         response.headers['Content-Type'] = 'application/pdf'
         
         safe_month_name = budget.month_name.replace(' ', '_').lower()
@@ -414,15 +380,10 @@ def download_dashboard_pdf():
         flash(f"PDF generation failed. Please check server logs.", "error")
         return redirect(url_for('dashboard'))
 
-
 @app.route("/download_all_budgets_pdf")
 def download_all_budgets_pdf():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
-    if not config or not config.wkhtmltopdf:
-        flash("PDF generation is not configured on this server.", "error")
-        return redirect(url_for('all_budgets'))
 
     user_id = int(session['user_id'])
     username = session.get('username', 'user')
@@ -438,30 +399,29 @@ def download_all_budgets_pdf():
         'September': 9, 'October': 10, 'November': 11, 'December': 12
     }
 
-    all_user_budgets = UserBudget.query.filter_by(user_id=user_id) \
-        .order_by(UserBudget.id.desc()).all()
+    all_user_budgets = UserBudget.query.filter_by(user_id=user_id).order_by(UserBudget.id.desc()).all()
     if not all_user_budgets:
         flash("No data to export.", "error")
         return redirect(url_for('all_budgets'))
 
-    # ---------- 1. Build hierarchy cleanly ----------
-    groups, uncategorized = {}, []
+    # 1. Build the exact same structure as the website
+    groups = {}
+    uncategorized = []
 
     for budget in all_user_budgets:
-        expenses = Expense.query.filter_by(budget_id=budget.id) \
-            .order_by(Expense.date.desc()).all()
-        expense_items, total_expenses, category_totals = [], 0.0, {}
+        expenses = Expense.query.filter_by(budget_id=budget.id).order_by(Expense.date.desc()).all()
+        expense_items = []
+        total_expenses = 0.0
 
+        category_totals = {}
         for exp in expenses:
             amount = float(exp.expense_amount)
             expense_items.append({
                 "category": exp.expense_category, "amount": amount,
-                "dayname": exp.day_name, "date": exp.date,
+                "dayname": exp.day_name, "date": exp.date
             })
             total_expenses += amount
-            category_totals[exp.expense_category] = (
-                category_totals.get(exp.expense_category, 0) + amount
-            )
+            category_totals[exp.expense_category] = category_totals.get(exp.expense_category, 0) + amount
 
         savings = float(budget.monthly_income) - total_expenses
         raw_month = (budget.month_name or "").strip()
@@ -470,13 +430,12 @@ def download_all_budgets_pdf():
         year_val = next((int(t) for t in parts[1:] if t.isdigit()), None)
 
         record = {
-            "month_name": raw_month, "month_word": month_word,
-            "month_num": MONTH_ORDER.get(month_word, 0), "year": year_val,
-            "monthly_income": float(budget.monthly_income),
+            "month_name": raw_month, "month_word": month_word, "month_num": MONTH_ORDER.get(month_word, 0),
+            "year": year_val, "monthly_income": float(budget.monthly_income),
             "total_expenses": total_expenses, "savings": savings,
-            "category_totals": category_totals, "expenses": expense_items,
+            "category_totals": category_totals, "expenses": expense_items
         }
-        
+
         if year_val is None:
             uncategorized.append(record)
         else:
@@ -484,33 +443,29 @@ def download_all_budgets_pdf():
 
     budgets_by_year = []
     for year in sorted(groups.keys(), reverse=True):
-        year_budgets = sorted(
-            groups[year], key=lambda b: (b["month_num"], b["month_name"]),
-            reverse=True,
-        )
-        ti = sum(b["monthly_income"] for b in year_budgets)
-        te = sum(b["total_expenses"] for b in year_budgets)
+        year_budgets = sorted(groups[year], key=lambda b: (b["month_num"], b["month_name"]), reverse=True)
+        total_income = sum(b["monthly_income"] for b in year_budgets)
+        total_exp = sum(b["total_expenses"] for b in year_budgets)
+
         budgets_by_year.append({
-            "label": str(year), "year": year, "is_uncategorized": False,
-            "budgets": year_budgets,
-            "total_income": ti, "total_expenses": te, "total_savings": ti - te,
+            "label": str(year), "year": year, "is_uncategorized": False, "budgets": year_budgets,
+            "total_income": total_income, "total_expenses": total_exp, "total_savings": total_income - total_exp
         })
 
     if uncategorized:
         uncategorized.sort(key=lambda b: (b["month_num"], b["month_name"]), reverse=True)
-        ti = sum(b["monthly_income"] for b in uncategorized)
-        te = sum(b["total_expenses"] for b in uncategorized)
+        total_income = sum(b["monthly_income"] for b in uncategorized)
+        total_exp = sum(b["total_expenses"] for b in uncategorized)
         budgets_by_year.append({
-            "label": "Uncategorized", "year": None, "is_uncategorized": True,
-            "budgets": uncategorized,
-            "total_income": ti, "total_expenses": te, "total_savings": ti - te,
+            "label": "Uncategorized", "year": None, "is_uncategorized": True, "budgets": uncategorized,
+            "total_income": total_income, "total_expenses": total_exp, "total_savings": total_income - total_exp
         })
 
-    lifetime_income = sum(g["total_income"] for g in budgets_by_year)
-    lifetime_expenses = sum(g["total_expenses"] for g in budgets_by_year)
+    lifetime_income = sum(g['total_income'] for g in budgets_by_year)
+    lifetime_expenses = sum(g['total_expenses'] for g in budgets_by_year)
     lifetime_savings = lifetime_income - lifetime_expenses
 
-    # ---------- 2. Filter by scope ----------
+    # 2. Filter based on scope
     filtered_groups = []
     for group in budgets_by_year:
         if scope == 'lifetime':
@@ -518,38 +473,29 @@ def download_all_budgets_pdf():
         elif scope == 'yearly' and str(group['label']) == str(target_year):
             filtered_groups.append(group)
         elif scope == 'monthly':
-            matching = [
-                b for b in group["budgets"]
-                if b["month_name"].lower() == (target_month or "").lower()
-            ]
-            if matching:
+            matching_budgets = [b for b in group['budgets'] if b['month_name'].lower() == target_month.lower()]
+            if matching_budgets:
                 filtered_groups.append({
-                    **group, "budgets": matching,
-                    "total_income": matching[0]["monthly_income"],
-                    "total_expenses": matching[0]["total_expenses"],
-                    "total_savings": matching[0]["savings"],
+                    **group, "budgets": matching_budgets,
+                    "total_income": matching_budgets[0]['monthly_income'],
+                    "total_expenses": matching_budgets[0]['total_expenses'],
+                    "total_savings": matching_budgets[0]['savings']
                 })
 
     if not filtered_groups:
         flash("No data found for this scope.", "error")
         return redirect(url_for('all_budgets'))
 
-    # ---------- 3. Generate charts locally (base64) ----------
+    # 3. Generate Matplotlib Charts Locally
     for group in filtered_groups:
-        # Yearly trend (only if >1 month)
         months = [b["month_word"] for b in reversed(group["budgets"])]
         inc = [b["monthly_income"] for b in reversed(group["budgets"])]
         exp = [b["total_expenses"] for b in reversed(group["budgets"])]
         sav = [b["savings"] for b in reversed(group["budgets"])]
-        group["trend_base64"] = (
-            make_trend_chart(months, inc, exp, sav) if len(months) > 1 else None
-        )
+        group["trend_base64"] = (make_trend_chart(months, inc, exp, sav) if len(months) > 1 else None)
 
-        # Monthly charts
         for b in group["budgets"]:
-            b["bar_base64"] = make_bar_chart(
-                b["monthly_income"], b["total_expenses"], b["savings"]
-            )
+            b["bar_base64"] = make_bar_chart(b["monthly_income"], b["total_expenses"], b["savings"])
             b["alloc_base64"] = make_doughnut(
                 ["Expenses", "Savings"],
                 [b["total_expenses"], max(0, b["savings"])],
@@ -557,8 +503,15 @@ def download_all_budgets_pdf():
                 center_text=f"₹{b['monthly_income']:,.0f}",
             )
             if b["category_totals"]:
-                cats = list(b["category_totals"].keys())
-                vals = list(b["category_totals"].values())
+                sorted_cats = sorted(b["category_totals"].items(), key=lambda x: x[1], reverse=True)
+                top_cats = sorted_cats[:5]
+                other_sum = sum(amt for cat, amt in sorted_cats[5:])
+                if other_sum > 0:
+                    top_cats.append(("Other", other_sum))
+                
+                cats = [cat for cat, amt in top_cats]
+                vals = [amt for cat, amt in top_cats]
+                
                 b["pie_base64"] = make_doughnut(
                     cats, vals, CATEGORY_PALETTE,
                     center_text=f"₹{sum(vals):,.0f}",
@@ -566,9 +519,18 @@ def download_all_budgets_pdf():
             else:
                 b["pie_base64"] = None
 
-    # ---------- 4. Render + build PDF ----------
-    logo_url = url_for('static', filename='icon/favicon.png', _external=True)
-    
+    # 4. Render Template
+    import os
+    import base64
+    logo_path = os.path.join(app.root_path, 'static', 'icon', 'favicon.png')
+    try:
+        with open(logo_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            logo_base64 = f"data:image/png;base64,{encoded_string}"
+    except Exception as e:
+        app.logger.error(f"Logo not found: {e}")
+        logo_base64 = None
+
     try:
         html = render_template(
             "pdf_all_budgets.html",
@@ -579,11 +541,11 @@ def download_all_budgets_pdf():
             scope=scope,
             username=cleaned_username,
             now=datetime.now(IST),
-            logo_url=logo_url,
+            logo_url=logo_base64,
         )
 
-        pdf = pdfkit.from_string(html, False, options=pdf_options, configuration=config)
-        response = make_response(pdf)
+        pdf_bytes = HTML(string=html).write_pdf()
+        response = make_response(pdf_bytes)
         response.headers["Content-Type"] = "application/pdf"
 
         timestamp = datetime.now(IST).strftime("%d_%b_%Y_%I-%M%p")
@@ -634,12 +596,12 @@ def dashboard():
     expiry_timestamp = session.get('session_expiry', 0)
     current_time = datetime.now().timestamp()
     #remaining_seconds = max(0, int(expiry_timestamp - current_time))
- 
+
     if current_time > expiry_timestamp:
         session.clear()
         flash('Session time expired! Please login again', 'error')
-        return redirect(url_for('login')) 
-    
+        return redirect(url_for('login'))
+
     user = User.query.filter_by(user_id=user_id).first()
     if not user:
         session.clear()
@@ -692,9 +654,9 @@ def dashboard():
     else:
         budget_result = None
 
-    return render_template("Index.html", 
+    return render_template("Index.html",
                            username=user.name,
-                           budget_result=budget_result, 
+                           budget_result=budget_result,
                            expiry_timestamp=int(expiry_timestamp * 1000)) # Pass milliseconds for JS
 
 @app.route("/all-budgets", methods=["GET"])
@@ -903,9 +865,9 @@ def all_budgets():
 def vault():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
+
     user = db.session.get(User, session['user_id'])
-    
+
     # --- 1. If User hasn't set a PIN yet, redirect to setup ---
     if not user.vault_pin:
         flash("Please set up a Vault PIN first.", "info")
@@ -943,7 +905,7 @@ def vault():
 def vault_setup():
     if 'user_id' not in session: return redirect(url_for('login'))
     user = db.session.get(User, session['user_id'])
-    
+
     if request.method == 'POST':
         account_pass = request.form.get('account_pass', '').strip()
         new_pin = request.form.get('new_pin', '').strip()
@@ -958,7 +920,7 @@ def vault_setup():
             session['vault_unlocked'] = True # Auto-unlock after setup
             flash("Vault created successfully!", "success")
             return redirect(url_for('vault'))
-            
+
     return render_template('VaultSetup.html')
 
 from flask import jsonify  # Make sure this is imported at the top
@@ -967,7 +929,7 @@ from flask import jsonify  # Make sure this is imported at the top
 def vault_reset_pin():
     if 'user_id' not in session:
         return jsonify({"success": False, "error": "Session expired. Please log in again."}), 401
-    
+
     user = db.session.get(User, session['user_id'])
     account_pass = request.form.get('account_pass', '').strip()
     new_pin = request.form.get('new_pin', '').strip()
@@ -984,9 +946,9 @@ def vault_reset_pin():
     # 3. Update PIN, Unlock Vault
     user.vault_pin = generate_password_hash(new_pin)
     db.session.commit()
-    
+
     session['vault_unlocked'] = True
-    
+
     # Return success JSON
     return jsonify({"success": True, "message": "Vault PIN reset successfully! Unlocking..."}), 200
 
@@ -999,10 +961,10 @@ def vault_lock():
 @app.route('/vault/add', methods=['POST'])
 def vault_add():
     if not session.get('vault_unlocked'): return redirect(url_for('vault'))
-    
+
     title = request.form.get('title', '').strip()
     secret = request.form.get('secret_text', '').strip()
-    
+
     if title and secret:
         new_item = VaultItem(user_id=session['user_id'], title=title, secret_text=secret)
         db.session.add(new_item)
@@ -1010,21 +972,21 @@ def vault_add():
         flash("Secret saved to Vault!", "success")
     else:
         flash("Title and Secret text are required.", "error")
-        
+
     return redirect(url_for('vault'))
 
 @app.route('/vault/edit/<int:item_id>', methods=['POST'])
 def vault_edit(item_id):
-    if not session.get('vault_unlocked'): 
+    if not session.get('vault_unlocked'):
         return redirect(url_for('vault'))
-        
+
     item = VaultItem.query.get_or_404(item_id)
-    
+
     # Security check: Ensure the item belongs to the logged-in user
     if item.user_id == session['user_id']:
         title = request.form.get('title', '').strip()
         secret = request.form.get('secret_text', '').strip()
-        
+
         if title and secret:
             item.title = title
             item.secret_text = secret
@@ -1032,7 +994,7 @@ def vault_edit(item_id):
             flash("Secret updated successfully!", "success")
         else:
             flash("Title and Secret text cannot be empty.", "error")
-            
+
     return redirect(url_for('vault'))
 
 @app.route('/vault/delete/<int:item_id>')
@@ -1060,7 +1022,7 @@ def profile():
 
     # 1. Calculate Account Age (Dynamically hide 0 values)
     delta = relativedelta(datetime.utcnow(), user.created_at)
-    
+
     age_parts = []
     if delta.years > 0:
         age_parts.append(f"{delta.years}yr{'s' if delta.years > 1 else ''}")
@@ -1068,17 +1030,17 @@ def profile():
         age_parts.append(f"{delta.months}month{'s' if delta.months > 1 else ''}")
     if delta.days > 0:
         age_parts.append(f"{delta.days}day{'s' if delta.days > 1 else ''}")
-        
+
     # If the list is empty (meaning 0 days), show "Today"
     account_age = " ".join(age_parts) if age_parts else "Joined Today"
 
     # 2. Calculate Accurate Lifetime Stats
     budgets = UserBudget.query.filter_by(user_id=user_id).all()
     total_income = sum(float(b.monthly_income) for b in budgets)
-    
+
     expenses = Expense.query.filter_by(user_id=user_id).all()
     total_expenses = sum(float(e.expense_amount) for e in expenses)
-    
+
     stats = {
         "total_income": total_income,
         "total_expenses": total_expenses,
@@ -1095,7 +1057,7 @@ def settings():
         flash("Session expired! Please login again.", 'error')
         return redirect(url_for('login'))
     return render_template('Settings.html')
-    
+
 @app.route('/add_month', methods=['POST'])
 def add_month():
     if 'user_id' not in session:
@@ -1133,7 +1095,7 @@ def add_month():
         return redirect(url_for('dashboard'))
 
     try:
-        session["selected_month"] = month_name  
+        session["selected_month"] = month_name
 
         user_budget = UserBudget.query.filter(
             UserBudget.user_id == user_id,
@@ -1146,13 +1108,13 @@ def add_month():
             total_exp = sum(float(exp.expense_amount) for exp in expenses)
             user_budget.total_expenses = total_exp
             user_budget.savings = monthly_income - total_exp
-            db.session.commit() 
+            db.session.commit()
             flash('Month & Monthly income updated successfully!', 'success')
         else:
             new_budget = UserBudget(
-                user_id=user_id, 
-                username=username or '', 
-                month_name=month_name, 
+                user_id=user_id,
+                username=username or '',
+                month_name=month_name,
                 monthly_income=monthly_income,
                 total_expenses=0.0,
                 savings=monthly_income
@@ -1160,7 +1122,7 @@ def add_month():
             db.session.add(new_budget)
             db.session.commit()
             flash('Month & Monthly income added successfully!', 'success')
-            
+
         return redirect(url_for('dashboard'))
 
     except Exception as e:
@@ -1492,13 +1454,13 @@ def delete_expense():
 
     try:
         expense = db.session.get(Expense, int(expense_id))
-        
+
         if expense:
             owner_id = getattr(expense, 'user_id', None) or (expense.budget.user_id if expense.budget else None)
-            
+
             if owner_id is not None and int(owner_id) == int(user_id):
                 budget_id = expense.budget_id
-                
+
                 db.session.delete(expense)
                 db.session.commit()
 
@@ -1572,7 +1534,7 @@ def send_weekly_budget_reports():
                     formatted_date = now.strftime("%b %d")    # e.g., "Aug 11"
 
                     budget = UserBudget.query.filter_by(
-                        user_id=user.user_id, 
+                        user_id=user.user_id,
                         month_name=current_month_name
                     ).first()
 
@@ -1603,7 +1565,7 @@ def send_weekly_budget_reports():
                         # --- FULL REPORT CONTENT ---
                         total_expenses = sum(float(e.expense_amount) for e in expenses)
                         net_savings = monthly_income - total_expenses
-                        
+
                         savings_percent = round((net_savings / monthly_income) * 100, 1)
                         expense_percent = round((total_expenses / monthly_income) * 100, 1)
                         savings_color = "#27ae60" if net_savings >= 0 else "#e74c3c"
@@ -1617,7 +1579,7 @@ def send_weekly_budget_reports():
                         if cat_totals:
                             cat_labels = list(cat_totals.keys())[:5]
                             cat_values = [round(cat_totals[k], 2) for k in cat_labels]
-                            
+
                             chart_config = f"""{{
                                 type: 'doughnut',
                                 data: {{
@@ -1634,10 +1596,10 @@ def send_weekly_budget_reports():
                                     }}
                                 }}
                             }}"""
-                            
+
                             encoded_config = quote(chart_config.replace('\n', '').replace(' ', ''))
                             chart_url = f"https://quickchart.io/chart?c={encoded_config}&w=450&h=220&bkg=transparent"
-                            
+
                             chart_html = f"""
                             <div style="text-align: center; margin: 20px 0; background-color: #0f172a; padding: 15px; border-radius: 12px; border: 1px solid #334155;">
                                 <img src="{chart_url}" alt="Expense Breakdown Chart" style="max-width: 100%; height: auto; border: 0;" />
@@ -1655,7 +1617,7 @@ def send_weekly_budget_reports():
                                     <td style="padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 13px; color: #f87171; font-weight: bold; text-align: right;">₹{float(exp.expense_amount):,.2f}</td>
                                 </tr>
                                 """
-                            
+
                             expense_table_html = f"""
                             <h4 style="color: #4ade80; font-size: 12px; font-weight: 800; letter-spacing: 1px; margin: 24px 0 10px 0; text-transform: uppercase;">
                                 📋 Recent Transactions ({len(expenses)})
@@ -1769,7 +1731,7 @@ def send_weekly_budget_reports():
                     msg['From'] = sender_email
                     msg['To'] = user.email
                     msg['Subject'] = f"📈 Budget Summary - {formatted_date} - Budget Wisely"
-                    
+
                     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
                     server.send_message(msg)
@@ -1785,7 +1747,7 @@ def send_weekly_budget_reports():
     except Exception as e:
         print(f"❌ Fatal error: {str(e)}")
         return False
-    
+
 # 🧪 Test Route: Trigger weekly budget digest manually
 @app.route('/api/send-weekly-budget-email')
 def trigger_weekly_budget_email():
@@ -1802,7 +1764,7 @@ def trigger_weekly_budget_email():
 @app.route('/signup', methods=['GET', 'POST'])
 @never_cache
 def signup():
-    
+
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip()
@@ -1819,17 +1781,17 @@ def signup():
         # Validate inputs
         if password != confirm_password:
             return signup_error("Passwords don't match!")
-            
+
         elif password and password[0].isdigit():
             return signup_error("Password must start with a letter!")
-            
+
         elif len(password) < 6:
             return signup_error("Password too short (min 6 chars)!")
-            
+
         else:
             try:
                 validate_email(email)
-                
+
                 if User.query.filter_by(email=email).first():
                     return signup_error("Email already exists!")
                 else:
@@ -1841,22 +1803,22 @@ def signup():
                     )
                     db.session.add(new_user)
                     db.session.commit()
-                    
+
                     flash("Registration successful! Please login.", 'success')
-                    
+
                     # 👇 AJAX SUCCESS CHECK 👇
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return jsonify({'success': True, 'redirect': url_for('login')})
-                        
+
                     return redirect(url_for('login'))
-            
+
             except EmailNotValidError as e:
                 return signup_error(str(e))
-                
+
             except Exception as e:
                 db.session.rollback()
                 return signup_error(f"Database error: {str(e)}")
-        
+
         return redirect(url_for('signup'))
 
     return render_template('Signup.html')
@@ -1885,7 +1847,7 @@ def forgot_password():
                 return forgot_error("Failed to send OTP. Try again later.")
         else:
             return forgot_error("No account found with this email!")
-                
+
     return render_template('Forgotpass.html')
 
 from flask import request, jsonify
@@ -1895,7 +1857,7 @@ from flask import request, jsonify
 def login():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
-    
+
     if request.method == 'POST':
         email = request.form['email'].strip()
         password = request.form['password'].strip()
@@ -1911,26 +1873,27 @@ def login():
 
                 expiry_time = datetime.now() + timedelta(minutes=60)
                 session['session_expiry'] = expiry_time.timestamp()
-                
+
                 # 👇 AJAX SUCCESS: Return JSON
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    flash("Login successful!", 'success')
                     return jsonify({'success': True, 'redirect': url_for('dashboard')})
-                
+
                 flash("Login successful!", 'success')
                 return redirect(url_for("dashboard"))
-            
+
             # 👇 ADD FLASH MESSAGE BEFORE THE AJAX RESPONSE 👇
-            flash("Invalid email or password", 'error') 
-            
+            flash("Invalid email or password", 'error')
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False}), 200
-            
+
         except Exception as e:
             flash(f"Database error: {str(e)}", "error")
-            
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False}), 200
-        
+
         return redirect(url_for("login"))
 
     return render_template('Login.html')
@@ -1951,7 +1914,7 @@ def resend_otp():
 
     flash("New OTP sent successfully!", "success")
     return redirect(url_for('verify_otp'))
-    
+
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -1966,10 +1929,10 @@ def send_otp(email):
     if not sender_email or not sender_password:
         print("Error: Email credentials not set")
         return False
-    
+
     # --- Professional Subject ---
     subject = "Budget Wisely | Password Reset Verification Code"
-    
+
     # --- Professional Body (HTML) ---
     html_body = f"""
     <html>
@@ -1990,7 +1953,7 @@ def send_otp(email):
       </body>
     </html>
     """
-    
+
     # --- Build the Message ---
     msg = MIMEMultipart('alternative')
     msg['Subject'] = Header(subject, 'utf-8')
@@ -2036,7 +1999,7 @@ def verify_otp():
     if not email: return otp_error("Session expired! Please request for new otp.")
     if not sent_otp: return otp_error("OTP expired! Please request for new otp.")
     if not otp_expiry: return otp_error("OTP expiry not found! Please request for new otp.")
-        
+
     if datetime.now().timestamp() > otp_expiry:
         return otp_error("OTP has expired! Please request a new one.")
 
@@ -2050,13 +2013,13 @@ def verify_otp():
             session['verified_email'] = email
 
             flash("OTP verified successfully! Please reset your password.", "success")
-            
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': True, 'redirect': url_for('reset_password')})
             return redirect(url_for('reset_password'))
         else:
             flash("Invalid OTP! Please try again.", "error")
-            
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'error': "Invalid OTP! Please try again."})
             return redirect(url_for('verify_otp'))
@@ -2068,7 +2031,7 @@ def verify_otp():
 @never_cache
 def reset_password():
     email = session.get('verified_email')
-    
+
     if not email:
         session.clear()
         flash('OTP expired! Please verify with OTP first.', 'error')
@@ -2103,7 +2066,7 @@ def reset_password():
 
                     session.pop('verified_email', None)
                     session.clear()
-                    
+
                     flash("Password reset successful! Please log in.", "success")
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return jsonify({'success': True, 'redirect': url_for('login')})
@@ -2115,7 +2078,7 @@ def reset_password():
                 db.session.rollback()
                 session.clear()
                 return pass_error("We are unable to process your request right now. Please try again later.")
-                
+
     return render_template('Resetpass.html')
 
 @app.route('/change_password', methods=['GET', 'POST'])
@@ -2174,7 +2137,7 @@ def change_pass():
                 flash("Unable to update password right now. Please try again later.", "error")
 
     return render_template('Changepass.html', username=user.name)
-    
+
 @app.route('/about_us')
 def about_us():
     return render_template('Aboutus.html')
@@ -2207,13 +2170,13 @@ def contact_us():
 @app.route('/logout')
 def logout():
     session.clear()  # Clears all session keys at once
-    
+
     # Check if the flag was passed in the URL
     if request.args.get('expired') == 'true':
         flash("Your session has expired. Please login again.", "error") # Red/Warning
     else:
         flash("Logged out successfully!", "success") # Green/Success
-        
+
     return redirect(url_for('login'))
 
 @app.before_request
@@ -2233,4 +2196,4 @@ def shutdown_session(exception=None):
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 if __name__ == '__main__':
-    app.run(debug=False, use_reloader=True)
+    app.run(debug=DEBUG, use_reloader=True)

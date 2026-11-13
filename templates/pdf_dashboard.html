@@ -24,8 +24,13 @@
             page-break-inside: avoid;
         }
         .chart-title { font-size: 14px; color: #64748b; margin: 0 0 10px 0; font-weight: bold; }
-        .chart-box img { max-width: 100%; height: 250px; object-fit: contain; display: block; margin: 0 auto; }
-        
+        .chart-box img { 
+            max-width: 100%; 
+            height: auto; 
+            max-height: 300px;
+            display: block; 
+            margin: 0 auto; 
+        }        
         /* Grid for 2 side-by-side charts */
         .chart-grid { width: 100%; border-collapse: separate; border-spacing: 10px 0; margin-bottom: 20px; }
         .chart-grid td { width: 50%; vertical-align: top; }

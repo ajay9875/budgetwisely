@@ -24,8 +24,13 @@
             page-break-inside: avoid;
         }
         .chart-title { font-size: 14px; color: #64748b; margin: 0 0 10px 0; font-weight: bold; }
-        .chart-box img { max-width: 100%; height: 250px; object-fit: contain; display: block; margin: 0 auto; }
-        
+        .chart-box img { 
+            max-width: 100%; 
+            height: auto; 
+            max-height: 300px;
+            display: block; 
+            margin: 0 auto; 
+        }        
         /* Grid for 2 side-by-side charts */
         .chart-grid { width: 100%; border-collapse: separate; border-spacing: 10px 0; margin-bottom: 20px; }
         .chart-grid td { width: 50%; vertical-align: top; }
@@ -81,7 +86,7 @@ table.data-table tbody tr:hover { background: #eef2ff; }  /* ignored in PDF, har
     </style>
 </head>
 <body>
-    <!-- Professional Header -->
+    <!-- Header -->
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
         <tr>
             <td style="width: 70px; vertical-align: middle; padding-bottom: 15px;">
@@ -113,31 +118,25 @@ table.data-table tbody tr:hover { background: #eef2ff; }  /* ignored in PDF, har
         </tr>
     </table>
 
-    <!-- Lifetime Summary (Always Shown) -->
+    <!-- LIFETIME SUMMARY (Only show if scope is lifetime) -->
+    {% if scope == 'lifetime' %}
     <table class="summary-cards">
         <tr>
-            <td>
-                <h3>Total Income</h3>
-                <p class="positive">₹{{ "%.2f"|format(lifetime_income) }}</p>
-            </td>
-            <td>
-                <h3>Total Expenses</h3>
-                <p class="negative">₹{{ "%.2f"|format(lifetime_expenses) }}</p>
-            </td>
-            <td>
-                <h3>Net Savings</h3>
-                <p class="positive">₹{{ "%.2f"|format(lifetime_savings) }}</p>
-            </td>
+            <td><h3>Total Income</h3><p class="positive">₹{{ "%.2f"|format(lifetime_income) }}</p></td>
+            <td><h3>Total Expenses</h3><p class="negative">₹{{ "%.2f"|format(lifetime_expenses) }}</p></td>
+            <td><h3>Net Savings</h3><p class="positive">₹{{ "%.2f"|format(lifetime_savings) }}</p></td>
         </tr>
     </table>
+    {% endif %}
 
     <!-- Yearly Breakdown -->
     {% for group in groups %}
+        <!-- Only show Year Header if scope is NOT monthly -->
+        {% if scope != 'monthly' %}
         <div class="year-header">
             <h2>{% if group.is_uncategorized %}Uncategorized{% else %}{{ group.label }} Financial Overview{% endif %}</h2>
         </div>
 
-        <!-- Yearly Summary Cards -->
         <table class="summary-cards" style="margin-bottom: 20px;">
             <tr>
                 <td style="padding: 10px;"><h3>Income</h3><p class="positive" style="font-size: 16px;">₹{{ "%.2f"|format(group.total_income) }}</p></td>
@@ -146,16 +145,17 @@ table.data-table tbody tr:hover { background: #eef2ff; }  /* ignored in PDF, har
             </tr>
         </table>
 
-<!-- Yearly Trend Chart -->
-{% if group.trend_base64 %}
-<div class="chart-box">
-    <h3 class="chart-title">{{ group.label }} — Monthly Trend</h3>
-    <img src="data:image/png;base64,{{ group.trend_base64 }}" alt="Yearly Trend">
-</div>
-{% endif %}
+        {% if group.trend_base64 %}
+        <div class="chart-box">
+            <h3 class="chart-title">{{ group.label }} — Monthly Trend</h3>
+            <img src="data:image/png;base64,{{ group.trend_base64 }}" alt="Yearly Trend">
+        </div>
+        {% endif %}
+        {% endif %}
 
         <!-- Loop through months inside this year -->
         {% for budget in group.budgets %}
+            <!-- Show Month Header -->
             <div class="month-header">{{ budget.month_name }}</div>
             
             <table class="summary-cards" style="margin-bottom: 15px;">
@@ -166,35 +166,35 @@ table.data-table tbody tr:hover { background: #eef2ff; }  /* ignored in PDF, har
                 </tr>
             </table>
 
-<!-- Budget Breakdown Bar Chart -->
-<div class="chart-box">
-    <h3 class="chart-title">Budget Breakdown</h3>
-    <img src="data:image/png;base64,{{ budget.bar_base64 }}" alt="Budget Breakdown">
-</div>
+            <!-- Budget Breakdown Bar Chart -->
+            <div class="chart-box">
+                <h3 class="chart-title">Budget Breakdown</h3>
+                <img src="data:image/png;base64,{{ budget.bar_base64 }}" alt="Budget Breakdown">
+            </div>
 
-<!-- 2 Column Grid for Doughnut Charts -->
-<table class="chart-grid">
-    <tr>
-        <td>
-            <div class="chart-box">
-                <h3 class="chart-title">Income Allocation</h3>
-                <img src="data:image/png;base64,{{ budget.alloc_base64 }}" alt="Income Allocation">
-            </div>
-        </td>
-        <td>
-            {% if budget.pie_base64 %}
-            <div class="chart-box">
-                <h3 class="chart-title">Expense Categories</h3>
-                <img src="data:image/png;base64,{{ budget.pie_base64 }}" alt="Expense Categories">
-            </div>
-            {% else %}
-            <div class="chart-box" style="height: 280px; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
-                <p style="color: #64748b; font-size: 14px; text-align: center;">No expense categories<br>logged this month.</p>
-            </div>
-            {% endif %}
-        </td>
-    </tr>
-</table>
+            <!-- 2 Column Grid for Doughnut Charts -->
+            <table class="chart-grid">
+                <tr>
+                    <td>
+                        <div class="chart-box">
+                            <h3 class="chart-title">Income Allocation</h3>
+                            <img src="data:image/png;base64,{{ budget.alloc_base64 }}" alt="Income Allocation">
+                        </div>
+                    </td>
+                    <td>
+                        {% if budget.pie_base64 %}
+                        <div class="chart-box">
+                            <h3 class="chart-title">Expense Categories</h3>
+                            <img src="data:image/png;base64,{{ budget.pie_base64 }}" alt="Expense Categories">
+                        </div>
+                        {% else %}
+                        <div class="chart-box" style="height: 280px; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
+                            <p style="color: #64748b; font-size: 14px; text-align: center;">No expense categories<br>logged this month.</p>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
 
             <!-- Detailed Expenses Table -->
             <h3 style="font-size: 15px; color: #334155; margin-top: 10px;">Detailed Expenses</h3>
@@ -223,7 +223,7 @@ table.data-table tbody tr:hover { background: #eef2ff; }  /* ignored in PDF, har
             <p style="text-align: center; color: #64748b; font-size: 13px; margin-bottom: 30px;">No expenses logged for this month.</p>
             {% endif %}
             
-            <div style="height: 30px;"></div> <!-- Spacing between months -->
+            <div style="height: 30px;"></div>
         {% endfor %}
     {% endfor %}
 
