@@ -191,7 +191,7 @@ def make_doughnut(labels, values, colors, center_text=None):
     fig, ax = plt.subplots(figsize=(4, 4))
     wedges, texts, autotexts = ax.pie(
         values, labels=None, colors=colors[: len(labels)],
-        autopct=lambda p: f"{p:.1f}%" if p > 3 else "",
+        autopct=lambda p: f"{p:.1f}%",
         startangle=90, pctdistance=0.78,
         wedgeprops=dict(width=0.42, edgecolor="white", linewidth=2),
         textprops=dict(fontsize=9, color="#334155"),
@@ -325,16 +325,10 @@ def download_dashboard_pdf():
 
     pie_base64 = None
     if category_totals:
-        # Top 5 + Other logic
-        sorted_cats = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)
-        top_cats = sorted_cats[:5]
-        other_sum = sum(amt for cat, amt in sorted_cats[5:])
-        if other_sum > 0:
-            top_cats.append(("Other", other_sum))
+        cats = list(category_totals.keys())
+        vals = list(category_totals.values())
         
-        cats = [cat for cat, amt in top_cats]
-        vals = [amt for cat, amt in top_cats]
-        
+        # Plot ALL categories directly (No Top 5 limit)
         pie_base64 = make_doughnut(cats, vals, CATEGORY_PALETTE, f"₹{sum(vals):,.0f}")
 
     # 3. Pass absolute file path for logo
@@ -503,14 +497,8 @@ def download_all_budgets_pdf():
                 center_text=f"₹{b['monthly_income']:,.0f}",
             )
             if b["category_totals"]:
-                sorted_cats = sorted(b["category_totals"].items(), key=lambda x: x[1], reverse=True)
-                top_cats = sorted_cats[:5]
-                other_sum = sum(amt for cat, amt in sorted_cats[5:])
-                if other_sum > 0:
-                    top_cats.append(("Other", other_sum))
-                
-                cats = [cat for cat, amt in top_cats]
-                vals = [amt for cat, amt in top_cats]
+                cats = list(b["category_totals"].keys())
+                vals = list(b["category_totals"].values())
                 
                 b["pie_base64"] = make_doughnut(
                     cats, vals, CATEGORY_PALETTE,
