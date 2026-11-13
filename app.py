@@ -172,11 +172,23 @@ def make_bar_chart(income, expenses, savings):
     labels = ["Income", "Expenses", "Savings"]
     values = [income, expenses, savings]
     colors = ["#4F46E5", "#EF4444", "#10B981"]
-    bars = ax.bar(labels, values, color=colors, width=0.55, zorder=3)
+    
+    # Use numeric index for precise control
+    x = range(len(labels))
+    bars = ax.bar(x, values, color=colors, width=0.45, zorder=3) # Thinner bars
+    
+    # Annotate values
     for bar, val in zip(bars, values):
         ax.annotate(f"₹{val:,.0f}", xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
                     xytext=(0, 4), textcoords="offset points", ha="center", va="bottom", 
                     fontsize=9, fontweight="bold", color="#1e293b")
+        
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontsize=9)
+    
+    # 👇 THIS FIXES THE TOUCHING BARS FOR 1 MONTH 👇
+    ax.margins(x=0.15) 
+    
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_color("#e2e8f0")
@@ -185,19 +197,21 @@ def make_bar_chart(income, expenses, savings):
     ax.set_axisbelow(True)
     ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
     ax.set_ylim(0, max(values + [1]) * 1.18)
+    
     return fig_to_base64(fig)
 
 def make_doughnut(labels, values, colors, center_text=None):
-    fig, ax = plt.subplots(figsize=(6, 4)) # Increased width to fit legend
+    # We keep the figure square, but make it a bit bigger to fit the bottom legend
+    fig, ax = plt.subplots(figsize=(5, 4.5)) 
     
-    # Truncate labels to 10 characters + "..."
-    truncated_labels = [f"{label[:10]}..." if len(label) > 10 else label for label in labels]
+    # Truncate labels to 15 characters + "..."
+    truncated_labels = [f"{label[:15]}..." if len(label) > 15 else label for label in labels]
     
     wedges, texts, autotexts = ax.pie(
         values, 
         labels=None, 
         colors=colors[: len(labels)],
-        autopct=lambda p: f"{p:.1f}%" if p > 2 else "", # Only show % if > 2% to avoid clutter
+        autopct=lambda p: f"{p:.1f}%" if p > 2 else "",
         startangle=90, 
         pctdistance=0.75,
         wedgeprops=dict(width=0.4, edgecolor="white", linewidth=2),
@@ -207,7 +221,7 @@ def make_doughnut(labels, values, colors, center_text=None):
     for at in autotexts:
         at.set_fontweight("bold")
         at.set_color("white")
-        at.set_fontsize(7) # Slightly smaller for crowded slices
+        at.set_fontsize(7)
         
     if center_text:
         ax.text(0, 0, center_text, ha="center", va="center",
@@ -215,33 +229,81 @@ def make_doughnut(labels, values, colors, center_text=None):
                 
     ax.axis("equal")
     
-    # 👇 ADD LEGEND AT BOTTOM 👇
+    # 👇 POSITION LEGEND AT THE BOTTOM 👇
+    # bbox_to_anchor=(0.5, 0.0) pushes the legend to the bottom edge
     ax.legend(
         wedges, truncated_labels, 
         loc="upper center", 
         bbox_to_anchor=(0.5, 0.05), 
-        ncol=3, # 3 columns of legends
+        ncol=2, # 2 columns looks cleaner for long names
         frameon=False,
-        fontsize=8
+        fontsize=8,
+        handlelength=1,  # Makes the color strip smaller
+        handletextpad=0.5, # Brings text closer to the strip
+        columnspacing=1.5
     )
     
     return fig_to_base64(fig)
 
+
 def make_trend_chart(months, incomes, expenses, savings):
-    fig, ax = plt.subplots(figsize=(7, 3.2))
-    x = range(len(months))
-    width = 0.26
-    ax.bar([i - width for i in x], incomes, width, label="Income", color="#4F46E5", zorder=3)
-    ax.bar(list(x), expenses, width, label="Expenses", color="#EF4444", zorder=3)
-    ax.bar([i + width for i in x], savings, width, label="Savings", color="#10B981", zorder=3)
-    ax.set_xticks(list(x))
+    # Adjust chart width according to the number of months
+    fig_width = max(7, min(12, len(months) * 0.75))
+    fig, ax = plt.subplots(figsize=(fig_width, 3.2))
+
+    # Balanced spacing between monthly groups
+    group_spacing = 1.25
+    x = [i * group_spacing for i in range(len(months))]
+
+    # Grouped bars
+    width = 0.16
+    offset = 0.21
+
+    bars1 = ax.bar([i - offset for i in x], incomes, width, label="Income", color="#4F46E5", zorder=3)
+    bars2 = ax.bar(x, expenses, width, label="Expenses", color="#EF4444", zorder=3)
+    bars3 = ax.bar([i + offset for i in x], savings, width, label="Savings", color="#10B981", zorder=3)
+
+    # Month labels
+    ax.set_xticks(x)
     ax.set_xticklabels(months, fontsize=9)
+
+    # Balanced chart boundaries
+    ax.set_xlim(-0.65, x[-1] + 0.65)
+
+    # 👇 FORMAT Y-AXIS TICKS TO SHOW ₹ AND COMMAS 👇
+    from matplotlib.ticker import FuncFormatter
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda val, pos: f'₹{val:,.0f}'))
+
+    # Clean appearance
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.tick_params(left=False, labelleft=False)
+    ax.spines["left"].set_visible(False)
+    ax.spines["bottom"].set_color("#cbd5e1")
+
+    ax.tick_params(left=False, labelleft=True, bottom=False, labelsize=8) # Show Y labels
     ax.set_axisbelow(True)
+
     ax.grid(axis="y", color="#e2e8f0", linestyle="--", alpha=0.6, zorder=0)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=3, frameon=False, fontsize=9)
+
+    # 👇 ADD VALUE LABELS ON TOP OF BARS 👇
+    for bars in [bars1, bars2, bars3]:
+        for bar in bars:
+            height = bar.get_height()
+            if height > 0:
+                ax.annotate(
+                    f'₹{height:,.0f}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3), # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom',
+                    fontsize=7, color="#334155"
+                )
+
+    # Legend
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, frameon=False, fontsize=9)
+
+    fig.tight_layout(pad=1.2)
+
     return fig_to_base64(fig)
 
 @app.route('/favicon.ico')
